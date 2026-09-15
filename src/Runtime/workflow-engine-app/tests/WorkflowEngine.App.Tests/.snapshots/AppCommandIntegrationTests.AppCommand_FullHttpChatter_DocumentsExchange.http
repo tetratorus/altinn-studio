@@ -3,6 +3,7 @@
 ###
 
 POST /api/v1/chatter-app-test/workflows?idempotencyKey=app-chatter-idem&collectionKey=Guid_1 HTTP/1.1
+Authorization: Bearer test-operator-api-key
 Content-Type: application/json; charset=utf-8
 
 {
@@ -164,6 +165,7 @@ Content-Type: application/json
 ###
 
 GET /api/v1/chatter-app-test/workflows/Guid_3 HTTP/1.1
+Authorization: Bearer test-operator-api-key
 
 HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8

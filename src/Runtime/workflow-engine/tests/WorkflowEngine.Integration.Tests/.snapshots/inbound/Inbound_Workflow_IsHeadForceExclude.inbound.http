@@ -1,4 +1,5 @@
 POST /api/v1/ttd-e2e-tests/workflows HTTP/1.1
+Authorization: Bearer test-operator-api-key
 Collection-Key: head-ctrl-is-head-exclude
 Idempotency-Key: idem-Guid_1
 Content-Type: application/json; charset=utf-8

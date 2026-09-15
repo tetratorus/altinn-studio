@@ -62,6 +62,13 @@ public class PlatformSettings
     public string ApiWorkflowEngineEndpoint { get; set; } = "http://localhost:9090/api/v1/";
 
     /// <summary>
+    /// Gets or sets the API key the app presents to the Workflow Engine (<c>Authorization: Bearer</c>).
+    /// The key is bound on the engine side to this app's <c>{org}/{app}</c> namespace.
+    /// Provisioned as a secret; the default matches the engine's local-development key.
+    /// </summary>
+    public string? WorkflowEngineApiKey { get; set; } = "LOCAL-DEV-ONLY-workflow-engine-api-key";
+
+    /// <summary>
     /// Gets or sets the subscription key value to use in requests against the platform.
     /// A new subscription key is generated automatically every time an app is deployed to an environment. The new key is then automatically
     /// added to the environment for the app code during deploy. This will override the value stored in app settings.

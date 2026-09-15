@@ -67,6 +67,23 @@ Reusable class library for async workflow processing. Provides the core engine, 
 - `GET /dashboard/mailboxes` — mailboxes grouped under named collections, each log laid out position by position; a bounded fetch rather than a field on the live SSE stream. Payload and bounds in `src/WorkflowEngine.Core/wwwroot/DASHBOARD_SPEC.md`
 - Dashboard SSE/REST endpoints under `/dashboard/*` (see Dashboard docs) — read-only projections; the dashboard's workflow actions go through the `/api/v1` endpoints above
 
+### Authentication and namespace authorization
+
+Every route except health, OpenAPI/Swagger and the dashboard login requires an API key configured under
+`EngineAuthentication:ApiKeys` (`Authentication/` in Core, settings in `WorkflowEngine.Models/EngineAuthenticationSettings.cs`).
+A key is presented as `Authorization: Bearer <key>` or `X-Api-Key: <key>`; the dashboard exchanges an
+operator key for the `wfe_dashboard` cookie at `POST /dashboard/login` so same-origin `fetch`/`EventSource` work.
+
+- Each key lists the `{org}/{app}` namespaces it may act on. `/api/v1/{namespace}/...` requires the
+  authenticated key to hold that namespace (`NamespaceAuthorizationFilter`, compared after `WorkflowNamespace.Normalize`);
+  anything else is `403`. Missing/unknown key is `401`.
+- `Operator: true` keys may act on every namespace and are the only ones admitted to `GET /api/v1/namespaces`,
+  `GET /api/v1/throttles`, the dashboard UI and every `/dashboard/*` route.
+- Startup fails without at least one configured key. Only Development/Docker hosts fall back to the single
+  operator key `LOCAL-DEV-ONLY-workflow-engine-api-key` (the app-lib's `PlatformSettings.WorkflowEngineApiKey` default).
+- The TestKit's `EngineWebApplicationFactory` configures `TestAuth.OperatorApiKey` and a tenant key bound to
+  `EngineApiClient.DefaultNamespace`, and every client it creates sends the operator key.
+
 ## Docker Compose
 
 Supporting services for local development. Without a profile, compose starts those alone and the

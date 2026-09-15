@@ -56,6 +56,9 @@ public static class WorkflowEngineBuilderExtensions
             builder.Services.AddEngineHealthChecks();
             builder.Services.AddHttpContextAccessor();
 
+            // API key authentication + namespace/operator authorization
+            builder.Services.AddEngineAuthentication(allowLocalDevKey: isLocalEnvironment);
+
             // Built-in commands
             builder.Services.AddCommand<WebhookCommand>();
 

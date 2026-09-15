@@ -2,11 +2,13 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using WorkflowEngine.Core.Authentication;
 using WorkflowEngine.Data.Constants;
 using WorkflowEngine.Data.Repository;
 using WorkflowEngine.Models;
@@ -59,8 +61,37 @@ internal static class DashboardEndpoints
             fileProvider = new ManifestEmbeddedFileProvider(typeof(DashboardEndpoints).Assembly, "wwwroot");
         }
 
+        // Operator-only gate for everything that is not an API/docs route: the dashboard's static assets are
+        // served by the static file middleware below, which has no endpoint metadata to attach a policy to.
+        app.Use(
+            async (ctx, next) =>
+            {
+                if (!RequiresOperator(ctx.Request.Path) || EngineAuthentication.IsOperator(ctx.User))
+                {
+                    await next(ctx);
+                    return;
+                }
+
+                if (ctx.User.Identity?.IsAuthenticated == true)
+                {
+                    await ctx.ForbidAsync();
+                    return;
+                }
+
+                if (AcceptsHtml(ctx.Request))
+                {
+                    ctx.Response.Redirect(LoginPath);
+                    return;
+                }
+
+                await ctx.ChallengeAsync();
+            }
+        );
+
         app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
         app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider });
+
+        MapDashboardLogin(app);
 
         // Hot-reload (dev/Docker only, physical files only)
         if (fileProvider is PhysicalFileProvider physicalProvider)
@@ -109,16 +140,137 @@ internal static class DashboardEndpoints
                         }
                     }
                 )
+                .RequireAuthorization(EngineAuthentication.OperatorPolicy)
                 .ExcludeFromDescription();
         }
 
         return app;
     }
 
+    private const string LoginPath = "/dashboard/login";
+    private const string LogoutPath = "/dashboard/logout";
+
+    private static readonly string[] _publicPathPrefixes =
+    [
+        "/api/",
+        "/openapi",
+        "/swagger",
+        "/health",
+        LoginPath,
+        LogoutPath,
+    ];
+
+    private static bool RequiresOperator(PathString path)
+    {
+        var value = path.Value ?? "/";
+        foreach (var prefix in _publicPathPrefixes)
+        {
+            if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool AcceptsHtml(HttpRequest request) =>
+        HttpMethods.IsGet(request.Method)
+        && request.Headers.Accept.Any(v => v is not null && v.Contains("text/html", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Browser login for the dashboard: exchanges an operator API key for the
+    /// <see cref="EngineAuthentication.DashboardCookie"/> cookie, so same-origin <c>fetch</c> and
+    /// <c>EventSource</c> requests from the dashboard authenticate.
+    /// </summary>
+    private static void MapDashboardLogin(WebApplication app)
+    {
+        app.MapGet(LoginPath, () => Results.Content(LoginPage(error: null), "text/html; charset=utf-8"))
+            .AllowAnonymous()
+            .ExcludeFromDescription();
+
+        app.MapPost(
+                LoginPath,
+                async (HttpContext ctx, EngineApiKeyResolver resolver, CancellationToken ct) =>
+                {
+                    var form = await ctx.Request.ReadFormAsync(ct);
+                    var apiKey = form["apiKey"].ToString();
+                    var principal = resolver.Resolve(apiKey);
+
+                    if (principal is null || !EngineAuthentication.IsOperator(principal))
+                    {
+                        return Results.Content(
+                            LoginPage(error: "Invalid or non-operator API key."),
+                            "text/html; charset=utf-8",
+                            statusCode: StatusCodes.Status401Unauthorized
+                        );
+                    }
+
+                    ctx.Response.Cookies.Append(
+                        EngineAuthentication.DashboardCookie,
+                        apiKey,
+                        new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = ctx.Request.IsHttps,
+                            SameSite = SameSiteMode.Strict,
+                            Path = "/",
+                            IsEssential = true,
+                        }
+                    );
+
+                    return Results.Redirect("/");
+                }
+            )
+            .AllowAnonymous()
+            .ExcludeFromDescription();
+
+        app.MapPost(
+                LogoutPath,
+                (HttpContext ctx) =>
+                {
+                    ctx.Response.Cookies.Delete(EngineAuthentication.DashboardCookie, new CookieOptions { Path = "/" });
+                    return Results.Redirect(LoginPath);
+                }
+            )
+            .AllowAnonymous()
+            .ExcludeFromDescription();
+    }
+
+    private static string LoginPage(string? error)
+    {
+        var errorHtml = error is null ? "" : $"<p role=\"alert\" style=\"color:#b00020\">{error}</p>";
+        return $$"""
+            <!doctype html>
+            <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <title>Workflow Engine dashboard - sign in</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <style>
+                body { font-family: system-ui, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #f4f5f7; }
+                form { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.15); display: grid; gap: .75rem; min-width: 20rem; }
+                input { padding: .5rem; font: inherit; }
+                button { padding: .5rem; font: inherit; cursor: pointer; }
+              </style>
+            </head>
+            <body>
+              <form method="post" action="{{LoginPath}}" autocomplete="off">
+                <h1 style="font-size:1.1rem;margin:0">Workflow Engine dashboard</h1>
+                <label for="apiKey">Operator API key</label>
+                <input id="apiKey" name="apiKey" type="password" required autofocus>
+                {{errorHtml}}
+                <button type="submit">Sign in</button>
+              </form>
+            </body>
+            </html>
+            """;
+    }
+
     public static WebApplication MapDashboardEndpoints(this WebApplication app)
     {
-        app.MapGet(
-                "/dashboard/stream",
+        var dashboard = app.MapGroup("/dashboard").RequireAuthorization(EngineAuthentication.OperatorPolicy);
+
+        dashboard.MapGet(
+                "/stream",
                 async (
                     IEngineStatus engineStatus,
                     IConcurrencyLimiter limiter,
@@ -225,8 +377,8 @@ internal static class DashboardEndpoints
             )
             .ExcludeFromDescription();
 
-        app.MapGet(
-                "/dashboard/stream/live",
+        dashboard.MapGet(
+                "/stream/live",
                 async (
                     StatusChangeSignal workflowSignal,
                     IServiceProvider sp,
@@ -336,8 +488,8 @@ internal static class DashboardEndpoints
             )
             .ExcludeFromDescription();
 
-        app.MapGet(
-                "/dashboard/labels",
+        dashboard.MapGet(
+                "/labels",
                 async (IServiceProvider sp, string key, string? @namespace, CancellationToken ct) =>
                 {
                     using IServiceScope scope = sp.CreateScope();
@@ -349,8 +501,8 @@ internal static class DashboardEndpoints
             )
             .ExcludeFromDescription();
 
-        app.MapGet(
-                "/dashboard/namespaces",
+        dashboard.MapGet(
+                "/namespaces",
                 async (IServiceProvider sp, CancellationToken ct) =>
                 {
                     using IServiceScope scope = sp.CreateScope();
@@ -361,8 +513,8 @@ internal static class DashboardEndpoints
             )
             .ExcludeFromDescription();
 
-        app.MapGet(
-                "/dashboard/query",
+        dashboard.MapGet(
+                "/query",
                 async (
                     IServiceProvider sp,
                     string? status,
@@ -441,8 +593,8 @@ internal static class DashboardEndpoints
         // cannot crowd another's mailbox off the payload; full windows come back named.
         const int mailboxCollectionCap = 100;
         const int mailboxesPerCollectionCap = 10;
-        app.MapGet(
-                "/dashboard/mailboxes",
+        dashboard.MapGet(
+                "/mailboxes",
                 async (IServiceProvider sp, string? collectionKeys, string? @namespace, CancellationToken ct) =>
                 {
                     string? nsFilter = string.IsNullOrWhiteSpace(@namespace) ? null : @namespace;
@@ -489,8 +641,8 @@ internal static class DashboardEndpoints
             )
             .ExcludeFromDescription();
 
-        app.MapGet(
-                "/dashboard/scheduled",
+        dashboard.MapGet(
+                "/scheduled",
                 async (IServiceProvider sp, string? @namespace, CancellationToken ct) =>
                 {
                     string? nsFilter = string.IsNullOrWhiteSpace(@namespace) ? null : @namespace;
@@ -507,8 +659,8 @@ internal static class DashboardEndpoints
             )
             .ExcludeFromDescription();
 
-        app.MapGet(
-                "/dashboard/step",
+        dashboard.MapGet(
+                "/step",
                 async (IServiceProvider sp, Guid wf, string ns, string step, CancellationToken ct) =>
                 {
                     using IServiceScope scope = sp.CreateScope();
@@ -568,8 +720,8 @@ internal static class DashboardEndpoints
             )
             .ExcludeFromDescription();
 
-        app.MapGet(
-                "/dashboard/state",
+        dashboard.MapGet(
+                "/state",
                 async (IServiceProvider sp, Guid wf, string ns, CancellationToken ct) =>
                 {
                     using IServiceScope scope = sp.CreateScope();
@@ -604,8 +756,8 @@ internal static class DashboardEndpoints
 
         // On-demand relations for cards whose source query does not eager-load them (the recent
         // section and the query tab); active cards get relations inline from the live stream.
-        app.MapGet(
-                "/dashboard/relations",
+        dashboard.MapGet(
+                "/relations",
                 async (IServiceProvider sp, Guid wf, string ns, CancellationToken ct) =>
                 {
                     using IServiceScope scope = sp.CreateScope();
@@ -635,8 +787,8 @@ internal static class DashboardEndpoints
         // most recently created nodes so a pathologically long-lived collection can't produce an
         // unbounded payload; `truncated` tells the frontend the story has an older, unshown tail.
         const int graphNodeCap = 200;
-        app.MapGet(
-                "/dashboard/graph",
+        dashboard.MapGet(
+                "/graph",
                 async (IServiceProvider sp, Guid wf, string ns, CancellationToken ct) =>
                 {
                     using IServiceScope scope = sp.CreateScope();

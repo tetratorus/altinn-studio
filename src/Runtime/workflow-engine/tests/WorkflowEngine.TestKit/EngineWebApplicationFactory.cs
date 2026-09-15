@@ -37,6 +37,12 @@ public sealed class EngineWebApplicationFactory<TProgram> : WebApplicationFactor
                 config.AddJsonStream(
                     """
                     {
+                      "EngineAuthentication": {
+                        "ApiKeys": [
+                          { "Name": "test-operator", "Key": "{{TestAuth.OperatorApiKey}}", "Operator": true },
+                          { "Name": "test-tenant", "Key": "{{TestAuth.TenantApiKey}}", "Namespaces": ["{{TestAuth.TenantNamespace}}"] }
+                        ]
+                      },
                       "EngineSettings": {
                         "Concurrency": {
                           "MaxWorkers": 10
@@ -53,7 +59,10 @@ public sealed class EngineWebApplicationFactory<TProgram> : WebApplicationFactor
                         }
                       }
                     }
-                    """.ToJsonStream()
+                    """.Replace("{{TestAuth.OperatorApiKey}}", TestAuth.OperatorApiKey, StringComparison.Ordinal)
+                        .Replace("{{TestAuth.TenantApiKey}}", TestAuth.TenantApiKey, StringComparison.Ordinal)
+                        .Replace("{{TestAuth.TenantNamespace}}", TestAuth.TenantNamespace, StringComparison.Ordinal)
+                        .ToJsonStream()
                 )
         );
 
@@ -70,5 +79,15 @@ public sealed class EngineWebApplicationFactory<TProgram> : WebApplicationFactor
         });
 
         _configureWebHost?.Invoke(builder);
+    }
+
+    /// <summary>
+    /// Every client created by the factory authenticates as the test operator key, so existing tests
+    /// exercise the engine as a fully privileged caller. Tests for authorization swap the header.
+    /// </summary>
+    protected override void ConfigureClient(HttpClient client)
+    {
+        base.ConfigureClient(client);
+        TestAuth.Authenticate(client, TestAuth.OperatorApiKey);
     }
 }

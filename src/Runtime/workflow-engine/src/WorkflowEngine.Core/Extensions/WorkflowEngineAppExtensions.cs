@@ -28,6 +28,8 @@ public static class WorkflowEngineAppExtensions
 
             // Middleware
             app.UseExceptionHandler();
+            app.UseAuthentication();
+            app.UseAuthorization();
 
             // Endpoints
             app.MapHealthEndpoints();

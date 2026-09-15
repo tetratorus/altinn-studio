@@ -14,15 +14,30 @@ using Xunit;
 
 namespace Designer.Tests.Controllers.ImageController;
 
-public class ValidateExternalImageUrlTests(WebApplicationFactory<Program> factory, MockServerFixture mockServerFixture)
-    : DesignerEndpointsTestsBase<ValidateExternalImageUrlTests>(factory),
+public class ValidateExternalImageUrlTests
+    : DesignerEndpointsTestsBase<ValidateExternalImageUrlTests>,
         IClassFixture<WebApplicationFactory<Program>>,
         IClassFixture<MockServerFixture>
 {
-    private readonly MockServerFixture _mockServerFixture = mockServerFixture;
+    private readonly MockServerFixture _mockServerFixture;
     private const string VersionPrefix = "designer/api";
     private const string Org = "ttd";
     private const string EmptyApp = "empty-app";
+
+    public ValidateExternalImageUrlTests(WebApplicationFactory<Program> factory, MockServerFixture mockServerFixture)
+        : base(factory)
+    {
+        _mockServerFixture = mockServerFixture;
+        JsonConfigOverrides.Add(
+            """
+            {
+              "UrlValidationSettings": {
+                "AllowPrivateNetworkTargets": true
+              }
+            }
+            """
+        );
+    }
 
     [Fact]
     public async Task ValidateExternalImageUrl_WhenUrlIsPointingToAnImage_ReturnsOk()
@@ -56,6 +71,35 @@ public class ValidateExternalImageUrlTests(WebApplicationFactory<Program> factor
 
         string unreachableUrl = _mockServerFixture.MockApi.Url + "/notvalidurl";
         string path = $"{VersionPrefix}/{Org}/{EmptyApp}/images/validate?url={Uri.EscapeDataString(unreachableUrl)}";
+
+        using HttpRequestMessage httpRequestMessage = new(HttpMethod.Get, path);
+        using HttpResponseMessage response = await HttpClient.SendAsync(httpRequestMessage);
+        string validationResult = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.Equal(ImageUrlValidationResult.NotValidImage.ToString(), validationResult.Trim('"'));
+    }
+
+    [Fact]
+    public async Task ValidateExternalImageUrl_WhenUrlRedirects_DoesNotFollowRedirectAndReturnsNotValidImage()
+    {
+        _mockServerFixture.MockApi.Reset();
+        IRequestBuilder redirectRequest = Request.Create().UsingHead().WithPath("/redirect");
+        IResponseBuilder redirectResponse = Response
+            .Create()
+            .WithStatusCode(HttpStatusCode.Found)
+            .WithHeader("Location", _mockServerFixture.MockApi.Url + "/image.png");
+        _mockServerFixture.MockApi.Given(redirectRequest).RespondWith(redirectResponse);
+
+        IRequestBuilder imageRequest = Request.Create().UsingHead().WithPath("/image.png");
+        IResponseBuilder imageResponse = Response
+            .Create()
+            .WithStatusCode(200)
+            .WithHeader("content-type", MediaTypeNames.Image.Png);
+        _mockServerFixture.MockApi.Given(imageRequest).RespondWith(imageResponse);
+
+        string redirectingUrl = _mockServerFixture.MockApi.Url + "/redirect";
+        string path = $"{VersionPrefix}/{Org}/{EmptyApp}/images/validate?url={Uri.EscapeDataString(redirectingUrl)}";
 
         using HttpRequestMessage httpRequestMessage = new(HttpMethod.Get, path);
         using HttpResponseMessage response = await HttpClient.SendAsync(httpRequestMessage);

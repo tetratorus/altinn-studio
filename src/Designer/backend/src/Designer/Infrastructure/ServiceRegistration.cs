@@ -29,6 +29,7 @@ using Altinn.Studio.Designer.TypedHttpClients.ImageClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using static Altinn.Studio.DataModeling.Json.Keywords.JsonSchemaKeywords;
 
 namespace Altinn.Studio.Designer.Infrastructure;
@@ -115,7 +116,11 @@ public static class ServiceRegistration
         services.AddSingleton<IStudioctlInstallScriptService, StudioctlInstallScriptService>();
         services.AddScoped<StudioctlAuthService>();
         services.AddHttpClient<IOrgService, OrgService>();
-        services.AddHttpClient<ImageClient>();
+        services
+            .AddHttpClient<ImageClient>()
+            .ConfigurePrimaryHttpMessageHandler(sp =>
+                ImageClientHandlerFactory.Create(sp.GetRequiredService<IOptions<UrlValidationSettings>>().Value)
+            );
         services.AddTransient<IAppVersionService, AppVersionService>();
         services.AddTransient<IAppDevelopmentService, AppDevelopmentService>();
         services.AddTransient<IUiFoldersService, UiFoldersService>();

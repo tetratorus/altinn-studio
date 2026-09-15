@@ -106,6 +106,38 @@ public class EnvironmentsServiceTests
         await Verifier.Verify(result).UseParameters(envName);
     }
 
+    [Theory]
+    [InlineData("attacker.example/")]
+    [InlineData("attacker.example")]
+    [InlineData("ttd?x=")]
+    [InlineData("ttd#")]
+    [InlineData("ttd:443")]
+    [InlineData("-ttd")]
+    [InlineData("")]
+    public async Task GetAppClusterUri_RejectsOrgThatIsNotAHostLabel(string org)
+    {
+        var httpClient = new HttpClient(new MockHttpMessageHandler(EnvironmentsJson))
+        {
+            BaseAddress = new Uri("https://mock.altinn.cloud"),
+        };
+        var generalSettings = new GeneralSettings
+        {
+            EnvironmentsUrl = "https://mock.altinn.cloud/environments.json",
+            HostName = "altinn.studio",
+        };
+        var platformSettings = new PlatformSettings { AppClusterUrlPattern = "https://{org}.{appPrefix}.{hostName}" };
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var sut = new EnvironmentsService(
+            httpClient,
+            generalSettings,
+            platformSettings,
+            cache,
+            NullLogger<EnvironmentsService>.Instance
+        );
+
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetAppClusterUri(org, "tt02"));
+    }
+
     private sealed class MockHttpMessageHandler(string responseContent) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(

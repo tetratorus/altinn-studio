@@ -2,14 +2,19 @@ import React, { useState } from 'react';
 import { ConditionalRendering } from './ConditionalRendering';
 import { Expressions } from '../config/Expressions';
 import { useText } from '../../hooks';
-import type { WindowWithRuleModel } from '../../hooks/queries/useRuleModelQuery';
+import { useRuleModelQuery } from '../../hooks/queries/useRuleModelQuery';
 import { useFormItemContext } from '../../containers/FormItemContext';
 import { formItemConfigs } from '../../data/formItemConfig';
 import { UnknownComponentAlert } from '../UnknownComponentAlert';
 import { StudioSwitch } from '@studio/components';
+import { useStudioEnvironmentParams } from 'app-shared/hooks/useStudioEnvironmentParams';
+import { useAppContext } from '../../hooks/useAppContext';
 
 export const Dynamics = () => {
   const { formItemId: formId, formItem: form } = useFormItemContext();
+  const { org, app } = useStudioEnvironmentParams();
+  const { selectedLayoutSet } = useAppContext();
+  const { data: ruleModel } = useRuleModelQuery(org, app, selectedLayoutSet);
 
   const [showOldExpressions, setShowOldExpressions] = useState<boolean>(false);
   const t = useText();
@@ -18,8 +23,7 @@ export const Dynamics = () => {
     setShowOldExpressions(event.target.checked);
   };
 
-  const conditionalRulesExist =
-    (window as WindowWithRuleModel).conditionalRuleHandlerObject !== undefined;
+  const conditionalRulesExist = ruleModel?.some((field) => field.type === 'condition') ?? false;
 
   const isUnknownInternalComponent: boolean = form && !formItemConfigs[form.type];
   if (isUnknownInternalComponent) {

@@ -5,8 +5,11 @@ import { renderWithMockStore } from '../../testing/mocks';
 import { formItemContextProviderMock } from '../../testing/formItemContextMocks';
 import { Dynamics } from './Dynamics';
 import { textMock } from '@studio/testing/mocks/i18nMock';
-import type { WindowWithRuleModel } from '../../hooks/queries/useRuleModelQuery';
 import type { FormComponent } from '../../types/FormComponent';
+import { createQueryClientMock } from 'app-shared/mocks/queryClientMock';
+import { QueryKey } from 'app-shared/types/QueryKey';
+import { org, app } from '@studio/testing/testids';
+import { layoutSet1NameMock } from '../../testing/layoutSetsMock';
 
 const user = userEvent.setup();
 
@@ -40,8 +43,7 @@ describe('Dynamics', () => {
   });
 
   it('should render default unchecked switch if ruleHandler is found', async () => {
-    (window as WindowWithRuleModel).conditionalRuleHandlerObject = {};
-    await render();
+    await render({}, true);
     const oldDynamicsSwitch = screen.getByRole('switch', {
       name: textMock('right_menu.show_old_dynamics'),
     });
@@ -50,8 +52,7 @@ describe('Dynamics', () => {
   });
 
   it('should render old dynamics when enabling switch if ruleHandler is found', async () => {
-    (window as WindowWithRuleModel).conditionalRuleHandlerObject = {};
-    await render();
+    await render({}, true);
     const oldDynamicsSwitch = screen.getByRole('switch', {
       name: textMock('right_menu.show_old_dynamics'),
     });
@@ -73,8 +74,17 @@ describe('Dynamics', () => {
   });
 });
 
-const render = async (props: Partial<FormItemContext> = {}) => {
-  return renderWithMockStore({})(
+const render = async (
+  props: Partial<FormItemContext> = {},
+  conditionalRulesExist = false,
+) => {
+  const queryClient = createQueryClientMock();
+  queryClient.setQueryData(
+    [QueryKey.RuleHandler, org, app, layoutSet1NameMock],
+    conditionalRulesExist ? [{ name: 'x', type: 'condition', inputs: {} }] : [],
+  );
+
+  return renderWithMockStore({}, {}, queryClient)(
     <FormItemContext.Provider
       value={{
         ...formItemContextProviderMock,

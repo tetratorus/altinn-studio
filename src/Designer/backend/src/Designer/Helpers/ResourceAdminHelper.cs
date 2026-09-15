@@ -60,7 +60,7 @@ public static class ResourceAdminHelper
     public static string GetResourceFileStructureName(string resourceIdentifier)
     {
         return IsMigratedAltinn1App(resourceIdentifier)
-            ? resourceIdentifier.Replace(":", "%3A") // %3A is the URL encoded value for ':', which is not allowed in file names. We need to encode it to be able to use the resource identifier as file name.
+            ? resourceIdentifier.Replace(":", "%3A").AsFileName() // %3A is the URL encoded value for ':', which is not allowed in file names. We need to encode it to be able to use the resource identifier as file name.
             : resourceIdentifier.AsFileName();
     }
 }

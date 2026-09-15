@@ -22,6 +22,10 @@ class BaseConfig:
 
     GITEA_BASE_URL = os.getenv("GITEA_BASE_URL", "http://host.docker.internal/repos")
 
+    # Shared with the Designer backend (AltinitySettings:SharedSecret); the
+    # only credential accepted on the /ws handshake. Unset means /ws is closed.
+    ALTINITY_AGENT_SHARED_SECRET = os.getenv("ALTINITY_AGENT_SHARED_SECRET")
+
     CORS_ORIGINS = [
         "http://localhost:3000",  # React dev server
         "http://localhost:5173",  # Vite dev server

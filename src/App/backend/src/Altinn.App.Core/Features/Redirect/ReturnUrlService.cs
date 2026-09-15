@@ -24,7 +24,19 @@ internal sealed class ReturnUrlService(IOptions<GeneralSettings> settings, ILogg
         {
             var byteArrayUri = Convert.FromBase64String(base64Url);
             var convertedUri = Encoding.UTF8.GetString(byteArrayUri);
-            Uri uri = new Uri(convertedUri);
+            if (!Uri.TryCreate(convertedUri, UriKind.Absolute, out var uri))
+            {
+                logger.LogWarning("Return URL validation failed: Not an absolute URL");
+                return ReturnUrlValidationResult.InvalidDomain(
+                    "The query parameter returnUrl must be an absolute http(s) URL."
+                );
+            }
+
+            if (!IsAllowedScheme(uri.Scheme))
+            {
+                logger.LogWarning("Return URL validation failed: Invalid scheme");
+                return ReturnUrlValidationResult.InvalidDomain("Invalid scheme from returnUrl query parameter.");
+            }
 
             if (!IsValidRedirectUri(uri.Host))
             {
@@ -42,6 +54,10 @@ internal sealed class ReturnUrlService(IOptions<GeneralSettings> settings, ILogg
             );
         }
     }
+
+    private static bool IsAllowedScheme(string scheme) =>
+        scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+        || scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase);
 
     private bool IsValidRedirectUri(string urlHost)
     {

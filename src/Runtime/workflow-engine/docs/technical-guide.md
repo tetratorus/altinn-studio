@@ -180,10 +180,16 @@ Executes HTTP requests (GET or POST). Response classification:
 | 408, 429, 5xx | Retryable      | Retry with backoff |
 | Other 4xx     | Critical       | Fail immediately   |
 
+Webhook targets are caller-supplied, so the engine only calls hosts an operator has allowed. Configure the
+`WebhookCommandSettings` section in the host: `AllowedHosts` (exact host names, IP literals, or `*.suffix`
+wildcards; empty by default, which rejects every webhook command at enqueue time), `AllowedSchemes` (default
+`https` only), and `MaxErrorBodyLength` (how much of a non-2xx response body is kept in the step's error
+history, default 512). Requests are sent through a dedicated `HttpClient` that does not follow redirects.
+
 ### Registration
 
 ```csharp
-builder.Services.AddCommand<WebhookCommand>();   // done by Core automatically
+builder.Services.AddWebhookCommand();            // done by Core automatically
 builder.Services.AddCommand<AppCommand>();       // host adds its own
 ```
 

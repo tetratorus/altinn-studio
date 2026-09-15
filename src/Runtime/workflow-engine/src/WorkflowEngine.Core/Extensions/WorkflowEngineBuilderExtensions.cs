@@ -57,7 +57,7 @@ public static class WorkflowEngineBuilderExtensions
             builder.Services.AddHttpContextAccessor();
 
             // Built-in commands
-            builder.Services.AddCommand<WebhookCommand>();
+            builder.Services.AddWebhookCommand();
 
             // Telemetry (can be disabled via EngineSettings:EnableTelemetry = false)
             bool enableTelemetry = builder.Configuration.GetValue(

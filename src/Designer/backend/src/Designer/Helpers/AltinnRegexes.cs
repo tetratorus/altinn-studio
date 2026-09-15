@@ -8,6 +8,9 @@ public partial class AltinnRegexes
     [GeneratedRegex("^[a-zA-Z0-9][a-zA-Z0-9-_\\.]*$")]
     public static partial Regex AltinnOrganizationNameRegex();
 
+    [GeneratedRegex("^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$", RegexOptions.IgnoreCase)]
+    public static partial Regex AltinnHostLabelRegex();
+
     [GeneratedRegex("^(?!datamodels$)[a-z]+[a-z0-9-]+[a-z0-9]$")]
     public static partial Regex AltinnAppNameRegex();
 

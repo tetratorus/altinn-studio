@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Altinn.Studio.Designer.Clients.Interfaces;
 using Altinn.Studio.Designer.Helpers;
 using Altinn.Studio.Designer.Helpers.Extensions;
+using Altinn.Studio.Designer.ModelBinding.Constants;
 using Altinn.Studio.Designer.Models;
 using Altinn.Studio.Designer.Models.App;
 using Altinn.Studio.Designer.Models.Dto;
@@ -132,6 +133,7 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpGet("{env}/{app}")]
+    [Authorize(Policy = AltinnPolicy.MustHaveAdminPermission)]
     public async Task<ActionResult<PublishedApplicationDetails>> GetApplicationDetails(
         string org,
         string env,
@@ -141,6 +143,11 @@ public class ApplicationsController : ControllerBase
     {
         try
         {
+            if (!await _environmentsService.IsAltinnOrg(org, ct))
+            {
+                return NotFound();
+            }
+
             var applicationMetadataTask = _appResourcesService.GetApplicationMetadata(org, env, app, ct);
 
             var runtimeAppDeployment = await _runtimeGatewayClient.GetAppDeployment(
@@ -245,6 +252,7 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpGet("{env}/{app}/application-metadata")]
+    [Authorize(Policy = AltinnPolicy.MustHaveAdminPermission)]
     public async Task<ActionResult<ApplicationMetadata>> GetApplicationMetadata(
         string org,
         string env,
@@ -254,6 +262,11 @@ public class ApplicationsController : ControllerBase
     {
         try
         {
+            if (!await _environmentsService.IsAltinnOrg(org, ct))
+            {
+                return NotFound();
+            }
+
             return Ok(await _appResourcesService.GetApplicationMetadata(org, env, app, ct));
         }
         catch (HttpRequestException ex)
@@ -271,6 +284,7 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpGet("{env}/{app}/process-metadata")]
+    [Authorize(Policy = AltinnPolicy.MustHaveAdminPermission)]
     public async Task<ActionResult<IEnumerable<ProcessTaskMetadata>>> GetProcessMetadata(
         string org,
         string env,
@@ -280,6 +294,11 @@ public class ApplicationsController : ControllerBase
     {
         try
         {
+            if (!await _environmentsService.IsAltinnOrg(org, ct))
+            {
+                return NotFound();
+            }
+
             return Ok(await _appResourcesService.GetProcessMetadata(org, env, app, ct));
         }
         catch (HttpRequestException ex)

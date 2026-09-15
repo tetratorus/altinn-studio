@@ -7,6 +7,7 @@ using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Altinn.Studio.Designer.Configuration;
+using Altinn.Studio.Designer.Helpers;
 using Altinn.Studio.Designer.Services.Interfaces;
 using Altinn.Studio.Designer.Services.Models;
 using Microsoft.Extensions.Caching.Memory;
@@ -80,6 +81,11 @@ public class EnvironmentsService : IEnvironmentsService
 
     public async Task<Uri> GetAppClusterUri(string org, string envName)
     {
+        if (string.IsNullOrEmpty(org) || !AltinnRegexes.AltinnHostLabelRegex().IsMatch(org))
+        {
+            throw new ArgumentException($"Organization '{org}' is not a valid host label.", nameof(org));
+        }
+
         var environments = await GetEnvironments();
 
         var environment = environments.FirstOrDefault(item => item.Name == envName);
@@ -88,7 +94,13 @@ public class EnvironmentsService : IEnvironmentsService
             throw new KeyNotFoundException($"Environment '{envName}' not found.");
         }
 
-        return new Uri(_platformSettings.GetAppClusterUrl(org, environment));
+        var clusterUri = new Uri(_platformSettings.GetAppClusterUrl(org, environment));
+        if (Uri.CheckHostName(clusterUri.Host) != UriHostNameType.Dns)
+        {
+            throw new ArgumentException($"Invalid app cluster host '{clusterUri.Host}'.", nameof(org));
+        }
+
+        return clusterUri;
     }
 
     public async Task<string> GetHostNameByEnvName(string envName)

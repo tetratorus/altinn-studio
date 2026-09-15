@@ -37,13 +37,16 @@ describe('escapeForInlineScript', () => {
 describe('extractRuleModelFields', () => {
   it('appends a sandboxed iframe and resolves matching messages', async () => {
     jest.useFakeTimers();
-    const promise = extractRuleModelFields('var ruleHandlerObject = {};');
+    const ruleModel =
+      'var ruleHandlerObject = { field: function () {} }; var ruleHandlerHelper = { field: function () { return { label: "Label" }; } };';
+    const promise = extractRuleModelFields(ruleModel);
     const iframe = document.querySelector('iframe');
 
     expect(iframe).toHaveAttribute('sandbox', 'allow-scripts');
-    expect(iframe?.srcdoc).toContain('var ruleHandlerObject = {};');
+    expect(iframe?.srcdoc).toContain(ruleModel);
 
     if (!iframe?.contentWindow) {
+      promise.catch(() => undefined);
       jest.advanceTimersByTime(5000);
       jest.useRealTimers();
       return;

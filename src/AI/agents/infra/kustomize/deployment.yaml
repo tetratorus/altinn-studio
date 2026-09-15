@@ -39,6 +39,11 @@ spec:
                   key: AZURE_API_KEY
             - name: GITEA_BASE_URL
               value: "http://altinn-repositories-public"
+            - name: ALTINITY_AGENT_SHARED_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: altinn-altinity-agents-eso-secret
+                  key: ALTINITY_AGENT_SHARED_SECRET
             - name: LANGFUSE_SECRET_KEY
               valueFrom:
                 secretKeyRef:

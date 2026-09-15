@@ -14,4 +14,10 @@ public class AltinitySettings
     /// Timeout in seconds for agent operations
     /// </summary>
     public int TimeoutSeconds { get; set; } = 300;
+
+    /// <summary>
+    /// Secret presented to the agent service when opening its WebSocket.
+    /// Must equal ALTINITY_AGENT_SHARED_SECRET on the agent side.
+    /// </summary>
+    public string? SharedSecret { get; set; }
 }

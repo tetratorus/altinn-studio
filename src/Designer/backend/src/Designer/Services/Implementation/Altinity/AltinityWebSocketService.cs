@@ -39,6 +39,8 @@ public class AltinityWebSocketService : IAltinityWebSocketService, IDisposable
     private const string SecureWebSocketScheme = "wss";
     private const string InsecureWebSocketScheme = "ws";
     private const string SecureHttpScheme = "https";
+    private const string SharedSecretHeader = "X-Altinity-Shared-Secret";
+    private const string DeveloperHeader = "X-Developer";
 
     private static readonly JsonSerializerOptions s_persistSerializerOptions = new()
     {
@@ -94,6 +96,7 @@ public class AltinityWebSocketService : IAltinityWebSocketService, IDisposable
 
             var wsUri = BuildWebSocketUri(_settings.AgentUrl);
             var webSocket = new ClientWebSocket();
+            AddHandshakeCredentials(webSocket, developer);
             await webSocket.ConnectAsync(wsUri, CancellationToken.None);
 
             _logger.LogInformation("Opened new agents WebSocket for developer {Developer}", developer);
@@ -379,6 +382,19 @@ public class AltinityWebSocketService : IAltinityWebSocketService, IDisposable
         {
             return false;
         }
+    }
+
+    private void AddHandshakeCredentials(ClientWebSocket webSocket, string developer)
+    {
+        if (string.IsNullOrWhiteSpace(_settings.SharedSecret))
+        {
+            throw new InvalidOperationException(
+                "AltinitySettings:SharedSecret is not configured; cannot authenticate to the agents WebSocket."
+            );
+        }
+
+        webSocket.Options.SetRequestHeader(SharedSecretHeader, _settings.SharedSecret);
+        webSocket.Options.SetRequestHeader(DeveloperHeader, developer);
     }
 
     private Uri BuildWebSocketUri(string agentUrl)

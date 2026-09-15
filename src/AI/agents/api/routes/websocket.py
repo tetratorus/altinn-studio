@@ -6,8 +6,19 @@ The .NET Designer backend (AltinityProxyHub) opens a raw WebSocket to ``/ws``,
 sends a ``{"type": "session", "session_id": "...", "developer": "..."}`` message,
 and then listens for JSON frames that it forwards to the frontend via SignalR.
 
+Authentication happens on the handshake, before ``accept()``:
+
+* ``X-Altinity-Shared-Secret`` must match ``ALTINITY_AGENT_SHARED_SECRET``.
+  The Designer backend is the only trusted client; it authenticates the end
+  user itself and vouches for the identity it forwards.
+* ``X-Developer`` names the developer whose events this connection may
+  receive. The ``developer`` field in client frames is only accepted when it
+  equals this handshake identity — it is never trusted on its own.
+* A browser ``Origin`` header is rejected: this is a server-to-server socket.
+
 This module:
-1. Accepts the WebSocket and waits for the ``session`` registration message.
+1. Authenticates the handshake, accepts the WebSocket and waits for the
+   ``session`` registration message.
 2. Starts an **event-streaming loop** that reads from the per-**developer** event
    buffer in ``EventSink`` and sends each event as a JSON frame.
 3. Concurrently listens for incoming messages (ping, more session registrations, etc.).
@@ -21,12 +32,57 @@ No callbacks are used — the WebSocket handler *pulls* from the buffer.
 Reconnection after a page reload simply replays all buffered events.
 """
 import asyncio
+import hmac
 import logging
+from typing import Optional
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 from agents.services.events import sink
+from shared.config import get_config
 
 logger = logging.getLogger(__name__)
+config = get_config()
+
+SHARED_SECRET_HEADER = "X-Altinity-Shared-Secret"
+DEVELOPER_HEADER = "X-Developer"
+ORIGIN_HEADER = "Origin"
+WS_CLOSE_POLICY_VIOLATION = 1008
+
+
+def authenticate_websocket_handshake(ws: WebSocket) -> Optional[str]:
+    """Return the verified developer for *ws*, or ``None`` if the handshake is not trusted.
+
+    Fails closed: without a configured shared secret every connection is refused.
+    """
+    expected_secret = config.ALTINITY_AGENT_SHARED_SECRET
+    if not expected_secret:
+        logger.error(
+            "ALTINITY_AGENT_SHARED_SECRET is not configured; refusing WebSocket connection"
+        )
+        return None
+
+    if ws.headers.get(ORIGIN_HEADER):
+        logger.warning("Refusing WebSocket with browser Origin header (server-to-server only)")
+        return None
+
+    presented_secret = ws.headers.get(SHARED_SECRET_HEADER, "")
+    if not hmac.compare_digest(presented_secret.encode(), expected_secret.encode()):
+        logger.warning("Refusing WebSocket with missing or invalid shared secret")
+        return None
+
+    developer = (ws.headers.get(DEVELOPER_HEADER) or "").strip()
+    if not developer:
+        logger.warning(f"Refusing WebSocket without {DEVELOPER_HEADER} header")
+        return None
+
+    return developer
+
+
+def is_registration_for_developer(data: dict, developer: str) -> bool:
+    """A ``session`` frame may omit ``developer`` or repeat the authenticated one — nothing else."""
+    requested = data.get("developer")
+    return requested is None or requested == developer
 
 
 async def _safe_send_json(ws: WebSocket, data: dict) -> bool:
@@ -79,10 +135,11 @@ async def _stream_developer_events(ws: WebSocket, developer: str):
             logger.warning(f"Wait error for developer {developer}: {e}")
 
 
-async def _receive_initial_registration(ws: WebSocket):
-    """Wait for the first ``session`` registration message.
+async def _receive_initial_registration(ws: WebSocket, developer: str) -> Optional[str]:
+    """Wait for the first ``session`` registration message for *developer*.
 
-    Returns ``(session_id, developer)`` tuple, or ``(None, None)`` on disconnect.
+    Returns the registered ``session_id`` (possibly empty), or ``None`` on
+    disconnect or when the frame names a different developer.
     """
     try:
         while True:
@@ -95,9 +152,14 @@ async def _receive_initial_registration(ws: WebSocket):
                     "timestamp": data.get("timestamp"),
                 })
             elif msg_type == "session":
-                return data.get("session_id"), data.get("developer")
+                if not is_registration_for_developer(data, developer):
+                    logger.warning(
+                        f"Registration developer mismatch for authenticated developer {developer}"
+                    )
+                    return None
+                return data.get("session_id") or ""
     except (WebSocketDisconnect, Exception):
-        return None, None
+        return None
 
 
 def register_websocket_routes(app: FastAPI):
@@ -105,12 +167,16 @@ def register_websocket_routes(app: FastAPI):
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket):
-        developer = None
+        developer = authenticate_websocket_handshake(websocket)
+        if developer is None:
+            await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
+            return
+
         stream_task = None
 
         try:
             await websocket.accept()
-            logger.info("🔗 WebSocket connected")
+            logger.info(f"🔗 WebSocket connected for developer {developer}")
 
             await _safe_send_json(websocket, {
                 "type": "connection",
@@ -119,12 +185,13 @@ def register_websocket_routes(app: FastAPI):
             })
 
             # --- Phase 1: wait for initial registration -----------------------
-            session_id, developer = await _receive_initial_registration(websocket)
-            if not developer:
-                logger.info("🔌 WebSocket closed before developer registration")
+            session_id = await _receive_initial_registration(websocket, developer)
+            if session_id is None:
+                logger.info(f"🔌 WebSocket closed before session registration (developer={developer})")
+                await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
                 return
 
-            sink.register_developer_session(developer, session_id or "")
+            sink.register_developer_session(developer, session_id)
             logger.info(f"📋 Developer registered: {developer}, initial session: {session_id}")
             await _safe_send_json(websocket, {
                 "type": "session",
@@ -149,19 +216,24 @@ def register_websocket_routes(app: FastAPI):
                             "timestamp": data.get("timestamp"),
                         })
                     elif msg_type == "session":
+                        if not is_registration_for_developer(data, developer):
+                            logger.warning(
+                                f"Ignoring session registration for another developer "
+                                f"(authenticated developer={developer})"
+                            )
+                            continue
                         new_session_id = data.get("session_id")
-                        new_developer = data.get("developer") or developer
                         if new_session_id:
-                            sink.register_developer_session(new_developer, new_session_id)
+                            sink.register_developer_session(developer, new_session_id)
                             logger.info(
-                                f"� Additional session registered: {new_session_id} "
-                                f"-> developer {new_developer}"
+                                f"📋 Additional session registered: {new_session_id} "
+                                f"-> developer {developer}"
                             )
                             await _safe_send_json(websocket, {
                                 "type": "session",
                                 "status": "registered",
                                 "session_id": new_session_id,
-                                "developer": new_developer,
+                                "developer": developer,
                             })
             except (WebSocketDisconnect, Exception):
                 pass

@@ -297,3 +297,7 @@ ser
 # didi is the dependency-injection package bpmn-js pulls in (see yarn.lock)
 @paths src/Designer/frontend/jest.config.js
 didi
+
+# Norwegian name of the synthetic reporting organization seeded into Register
+@paths local-reporting-runtime/infra/register/seed.sql
+LOKAL

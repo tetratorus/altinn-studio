@@ -1,0 +1,704 @@
+# Local Reporting Runtime (LRR) — one compose stack running the real Altinn platform services
+# plus the local infrastructure/emulators they need. Dev-only credentials throughout.
+#
+#   ./scripts/up.sh        build + start everything, bootstrap secrets/seeds
+#   ./scripts/down.sh      stop (keeps ./data volumes)
+#   ./scripts/test.sh      acceptance tests
+#
+# Browser entry point: https://local.altinn.cloud  (gateway, TLS from ./certs)
+
+name: lrr
+
+x-dotnet-common: &dotnet-common
+  restart: unless-stopped
+  networks: [lrr]
+  volumes:
+    - ./certs/ca-bundle.crt:/etc/ssl/certs/ca-certificates.crt:ro
+    - ./certs:/certs:ro
+    # Altinn.Common.AccessTokenClient default signing-cert location (<parent-of-cwd>/accesstoken/accesstokencredentials.pfx; cwd is /app).
+    - ./certs/platform-access-token.pfx:/accesstoken/accesstokencredentials.pfx:ro
+  extra_hosts:
+    - "local.altinn.cloud:host-gateway"
+  environment: &dotnet-env
+    SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+    DOTNET_SYSTEM_NET_HTTP_SOCKETSHTTPHANDLER_HTTP2SUPPORT: "false"
+    # Azure SDK managed-identity credential → lowkey-vault's IMDS stub (real challenge flow, dev-only)
+    IDENTITY_ENDPOINT: http://lowkey-vault:8080/metadata/identity/oauth2/token
+    IDENTITY_HEADER: header
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+
+x-pg: &pg
+  PG_HOST: postgres
+
+x-azurite-key: &azurite-key "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
+
+services:
+  # ───────────────────────────── infrastructure ─────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    networks: [lrr]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    command: ["postgres", "-c", "max_connections=400", "-c", "log_min_duration_statement=250"]
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./infra/postgres:/docker-entrypoint-initdb.d:ro
+    ports: ["127.0.0.1:5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -d register -c 'select 1' >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.35.0
+    restart: unless-stopped
+    networks: [lrr]
+    command: ["azurite", "--blobHost", "0.0.0.0", "--queueHost", "0.0.0.0", "--tableHost", "0.0.0.0",
+              "--location", "/data", "--skipApiVersionCheck", "--loose", "--silent"]
+    volumes:
+      - ./data/azurite:/data
+    ports: ["127.0.0.1:10000:10000", "127.0.0.1:10001:10001", "127.0.0.1:10002:10002"]
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 10000 && nc -z 127.0.0.1 10001"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    restart: unless-stopped
+    networks: [lrr]
+    environment:
+      RABBITMQ_DEFAULT_USER: register
+      RABBITMQ_DEFAULT_PASS: Password
+    volumes:
+      - ./data/rabbitmq:/var/lib/rabbitmq
+    ports: ["127.0.0.1:15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  # Azure Service Bus emulator (Events queues) — needs SQL Server as its metadata store
+  sb-sqledge:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    networks: [lrr]
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "LrrDevOnly!Sql1"
+      MSSQL_PID: Developer
+    volumes:
+      - ./data/mssql:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'LrrDevOnly!Sql1' -Q 'select 1' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+  servicebus:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    restart: unless-stopped
+    networks: [lrr]
+    depends_on:
+      sb-sqledge: { condition: service_healthy }
+    environment:
+      SQL_SERVER: sb-sqledge
+      MSSQL_SA_PASSWORD: "LrrDevOnly!Sql1"
+      ACCEPT_EULA: "Y"
+      SQL_WAIT_INTERVAL: "5"
+    volumes:
+      - ./infra/servicebus/config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
+    ports: ["127.0.0.1:5672:5672"]
+    # distroless image: no in-container healthcheck possible; scripts/up.sh waits on tcp/5672 instead
+
+  # Key Vault-compatible emulator: the Azure SDK's real SecretClient/ManagedIdentityCredential is used,
+  # so platform-access-token signature validation keeps its production code path.
+  lowkey-vault:
+    image: nagyesta/lowkey-vault:7.3.98
+    restart: unless-stopped
+    networks:
+      lrr:
+        aliases: [keyvault.local.altinn.cloud]
+    # Vault contents are exported to ./data/lowkey-vault on shutdown and imported on the next start; an import
+    # already contains the vault, so auto-registration (LOWKEY_VAULT_NAMES) must be off when the file exists.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ -s /import/vault.json ]; then names=-; else names=keyvault; fi
+        exec java $${JAVA_OPTS} -jar /lowkey-vault.jar --LOWKEY_VAULT_NAMES=$$names $${LOWKEY_ARGS}
+    environment:
+      LOWKEY_ARGS: >-
+        --LOWKEY_AUTH_RESOURCE=local.altinn.cloud
+        --LOWKEY_VAULT_ALIASES=keyvault.localhost=keyvault.local.altinn.cloud:8443
+        --LOWKEY_IMPORT_LOCATION=/import/vault.json
+        --LOWKEY_EXPORT_LOCATION=/import/vault.json
+        --LOWKEY_IMPORT_TEMPLATE_HOST=keyvault.local.altinn.cloud
+        --LOWKEY_IMPORT_TEMPLATE_PORT=8443
+        --server.ssl.key-store=/certs/lowkey-vault.p12
+        --server.ssl.key-store-password=lrr-dev-only
+        --server.ssl.key-store-type=PKCS12
+    volumes:
+      - ./data/lowkey-vault:/import
+      - ./certs:/certs:ro
+    ports: ["127.0.0.1:8443:8443", "127.0.0.1:8081:8080"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --no-check-certificate -O /dev/null https://localhost:8443/ping || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.128.0
+    restart: unless-stopped
+    networks: [lrr]
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./infra/otel/config.yaml:/etc/otelcol/config.yaml:ro
+      - ./logs/otel:/var/log/otel
+
+  gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    networks:
+      lrr:
+        aliases: [local.altinn.cloud, app.local.altinn.cloud, mockporten.local.altinn.cloud, subscriber.local.altinn.cloud]
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/certs:ro
+      - ./infra/static:/static:ro
+    ports: ["80:80", "443:443"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --no-check-certificate -O /dev/null https://127.0.0.1/authentication/api/v1/openid/.well-known/openid-configuration || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # ───────────────────── external-system substitutes (synthetic) ─────────────────────
+  mockporten:
+    <<: *dotnet-common
+    build:
+      context: ../../altinn-authentication/samples/mockporten
+    image: lrr/mockporten:local
+    environment:
+      <<: *dotnet-env
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5090
+      GeneralSettings__TestIdpEnabled: "true"
+      GeneralSettings__TestIdpSharedPassword: ${LRR_MOCKPORTEN_PASSWORD:-lrr-synthetic-only}
+      GeneralSettings__RequirePkce: "true"
+      GeneralSettings__JwtValidityMinutes: "10"
+      GeneralSettings__IdProviderEndpoint: https://mockporten.local.altinn.cloud/
+      GeneralSettings__IssCode: https://mockporten.local.altinn.cloud/
+      GeneralSettings__IssToken: https://mockporten.local.altinn.cloud/
+      # Maskinporten substitute: the app's synthetic machine client (RFC 7523 JWT-bearer grant)
+      MaskinportenSettings__Enabled: "true"
+      MaskinportenSettings__Clients__0__ClientId: lrr-app-maskinporten-client
+      MaskinportenSettings__Clients__0__OrgNo: "991825827"
+      MaskinportenSettings__Clients__0__PublicJwk: ${LRR_MASKINPORTEN_PUBLIC_JWK:?run scripts/up.sh}
+      kvSetting__KeyVaultURI: ""
+      CertificateSettings__CertificatePath: /certs/mockporten-signing.pfx
+      CertificateSettings__CertificatePwd: ${LRR_PFX_PASSWORD:-lrr-dev-only}
+
+  subscriber:
+    image: python:3.12-alpine
+    restart: unless-stopped
+    networks: [lrr]
+    command: ["python", "/app/subscriber.py"]
+    volumes:
+      - ./subscriber:/app:ro
+      - ./data/subscriber:/data
+
+  # ───────────────────────────── real platform services ─────────────────────────────
+  register-init:
+    <<: *dotnet-common
+    image: lrr/register:local
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    environment:
+      <<: *dotnet-env
+      ASPNETCORE_ENVIRONMENT: Production
+      ALTINN_ENVIRONMENT: LRR
+      Altinn__RunInitOnly: "true"
+      Altinn__Npgsql__register__Enable: "true"
+      Altinn__Npgsql__register__ConnectionString: Host=postgres;Port=5432;Username=register;Password=Password;Database=register
+      Altinn__Npgsql__register__Migrate__Enabled: "true"
+      Altinn__Npgsql__register__Migrate__ConnectionString: Host=postgres;Port=5432;Username=register;Password=Password;Database=register
+      Altinn__Npgsql__register__Seed__Enabled: "false"
+      Altinn__Npgsql__register__Create__Enabled: "false"
+      # MassTransit must be enabled during init so the Quartz scheduler schema (register_quartz) is migrated too
+      Altinn__MassTransit__register__Enable: "true"
+      Altinn__MassTransit__register__Transport: rabbitmq
+      Altinn__MassTransit__register__RabbitMq__Host: rabbitmq
+      Altinn__MassTransit__register__RabbitMq__Port: "5672"
+      Altinn__MassTransit__register__RabbitMq__ManagementPort: "15672"
+      Altinn__MassTransit__register__RabbitMq__Username: register
+      Altinn__MassTransit__register__RabbitMq__Password: Password
+      Altinn__MassTransit__register__RabbitMq__VirtualHost: /
+
+  register:
+    <<: *dotnet-common
+    image: lrr/register:local
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      lowkey-vault: { condition: service_healthy }
+      register-init: { condition: service_completed_successfully }
+    environment:
+      <<: *dotnet-env
+      ASPNETCORE_ENVIRONMENT: Production
+      # Serve legacy V1 party APIs from the Register DB instead of the Altinn 2 (SBL) bridge, which does not exist locally.
+      Altinn__register__ApiSource__Default: DB
+      ASPNETCORE_URLS: http://+:5020
+      ALTINN_ENVIRONMENT: LRR
+      Altinn__Npgsql__register__Enable: "true"
+      Altinn__Npgsql__register__ConnectionString: Host=postgres;Port=5432;Username=register;Password=Password;Database=register
+      Altinn__Npgsql__register__Migrate__Enabled: "false"
+      Altinn__MassTransit__register__Enable: "true"
+      Altinn__MassTransit__register__Transport: rabbitmq
+      Altinn__MassTransit__register__RabbitMq__Host: rabbitmq
+      Altinn__MassTransit__register__RabbitMq__Port: "5672"
+      Altinn__MassTransit__register__RabbitMq__ManagementPort: "15672"
+      Altinn__MassTransit__register__RabbitMq__Username: register
+      Altinn__MassTransit__register__RabbitMq__Password: Password
+      Altinn__MassTransit__register__RabbitMq__VirtualHost: /
+      Altinn__register__PartyImport__A2__Enable: "false"
+      Altinn__register__PartyImport__A2__PartyUserId__Enable: "false"
+      Altinn__register__PartyImport__A2__Profiles__Enable: "false"
+      Altinn__register__PartyImport__SystemUsers__Enable: "false"
+      Altinn__register__PartyImport__Sire__Listen: "false"
+      Altinn__register__PartyImport__Sire__Enrich: "false"
+      Altinn__register__Party__CreatePartyId: "false"
+      GeneralSettings__OpenIdWellKnownEndpoint: https://local.altinn.cloud/authentication/api/v1/openid/
+      # platform access-token: sign with local PFX, verify via key vault public cert
+      AccessTokenSettings__AccessTokenSigningCertificateFullPath: /certs/platform-access-token.pfx
+      Altinn__PlatformAccessToken__KeyVault__Endpoint: https://keyvault.local.altinn.cloud:8443/
+      kvSetting__SecretUri: https://keyvault.local.altinn.cloud:8443/
+      Platform__Token__Generator__Issuer: platform
+    healthcheck: &http-health-5020
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:5020/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # Profile applies EF Core migrations only in a dedicated run (`--run-db-migrations`), never at API startup.
+  profile-init:
+    <<: *dotnet-common
+    image: lrr/profile:local
+    restart: "no"
+    command: ["--run-db-migrations"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      <<: *dotnet-env
+      ASPNETCORE_ENVIRONMENT: Production
+      PostgreSqlSettings__EnableDBConnection: "true"
+      PostgreSqlSettings__ProfileDbEnableDBConnection: "true"
+      PostgreSqlSettings__AdminConnectionString: Host=postgres;Port=5432;Username=platform_profile_admin;Password={0};Database=profiledb;Pooling=false
+      PostgreSqlSettings__ConnectionString: Host=postgres;Port=5432;Username=platform_profile;Password={0};Database=profiledb;Maximum Pool Size=4
+      PostgreSqlSettings__ProfileDbAdminPwd: Password
+      PostgreSqlSettings__ProfileDbPwd: Password
+      kvSetting__SecretUri: https://keyvault.local.altinn.cloud:8443/
+
+  profile:
+    <<: *dotnet-common
+    image: lrr/profile:local
+    depends_on:
+      postgres: { condition: service_healthy }
+      register: { condition: service_healthy }
+      profile-init: { condition: service_completed_successfully }
+    environment:
+      <<: *dotnet-env
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5030
+      GeneralSettings__OpenIdWellKnownEndpoint: https://local.altinn.cloud/authentication/api/v1/openid/
+      PostgreSqlSettings__EnableDBConnection: "true"
+      PostgreSqlSettings__ProfileDbEnableDBConnection: "true"
+      PostgreSqlSettings__AdminConnectionString: Host=postgres;Port=5432;Username=platform_profile_admin;Password={0};Database=profiledb;Pooling=false
+      PostgreSqlSettings__ConnectionString: Host=postgres;Port=5432;Username=platform_profile;Password={0};Database=profiledb;Maximum Pool Size=4
+      PostgreSqlSettings__ProfileDbAdminPwd: Password
+      PostgreSqlSettings__ProfileDbPwd: Password
+      PlatformSettings__ApiAuthorizationEndpoint: https://local.altinn.cloud/authorization/api/v1/
+      RegisterSettings__ApiRegisterEndpoint: https://local.altinn.cloud/register/api/
+      JobSettings__KrrSyncEnabled: "False"
+      JobSettings__OrgSyncEnabled: "False"
+      AccessTokenSettings__AccessTokenSigningCertificateFullPath: /certs/platform-access-token.pfx
+      kvSetting__SecretUri: https://keyvault.local.altinn.cloud:8443/
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:5030/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  authentication:
+    <<: *dotnet-common
+    image: lrr/authentication:local
+    depends_on:
+      postgres: { condition: service_healthy }
+      azurite: { condition: service_healthy }
+      lowkey-vault: { condition: service_healthy }
+      mockporten: { condition: service_started }
+    environment:
+      <<: *dotnet-env
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5040
+      GeneralSettings__HostName: local.altinn.cloud
+      GeneralSettings__BaseUrl: https://local.altinn.cloud
+      GeneralSettings__PlatformEndpoint: https://local.altinn.cloud/
+      GeneralSettings__OpenIdWellKnownEndpoint: https://local.altinn.cloud/authentication/api/v1/openid/
+      GeneralSettings__OrganisationRepositoryLocation: https://local.altinn.cloud/cdn/orgs/altinn-orgs.json
+      GeneralSettings__OidcRefreshTokenPepper: ${LRR_OIDC_PEPPER:-lrr-dev-only-pepper-not-a-secret}
+      GeneralSettings__JwtValidityMinutes: "30"
+      OidcProviders__idporten__Issuer: https://mockporten.local.altinn.cloud/
+      OidcProviders__idporten__IssuerKey: idporten
+      OidcProviders__idporten__WellKnownConfigEndpoint: https://mockporten.local.altinn.cloud/api/v1/openid/.well-known/openid-configuration
+      OidcProviders__idporten__AuthorizationEndpoint: https://mockporten.local.altinn.cloud/Authorize
+      OidcProviders__idporten__TokenEndpoint: https://mockporten.local.altinn.cloud/token
+      OidcProviders__idporten__ClientId: altinn-local-reporting-runtime
+      OidcProviders__idporten__ClientSecret: ${LRR_MOCKPORTEN_CLIENT_SECRET:-lrr-dev-only-client-secret}
+      OidcProviders__idporten__Scope: openid
+      OidcProviders__idporten__RequireSyntheticPid: "true"
+      OidcProviders__idporten__StrictIdTokenValidation: "true"
+      OidcProviders__idporten__ValidateCallbackIssuer: "true"
+      OidcProviders__idporten__DefaultUpstreamAcrValues: idporten-loa-substantial
+      GeneralSettings__MaskinportenWellKnownConfigEndpoint: https://mockporten.local.altinn.cloud/api/v1/openid/.well-known/openid-configuration
+      GeneralSettings__MaskinportenWellKnownAlternativeConfigEndpoint: https://mockporten.local.altinn.cloud/api/v1/openid/.well-known/openid-configuration
+      PlatformSettings__ApiAuthorizationEndpoint: https://local.altinn.cloud/authorization/api/v1/
+      PlatformSettings__ApiRegisterEndpoint: https://local.altinn.cloud/register/api/v1/
+      PlatformSettings__ApiRegisterInternalEndpoint: https://local.altinn.cloud/register/api/v2/internal/
+      PlatformSettings__ApiProfileEndpoint: https://local.altinn.cloud/profile/api/v1/
+      AccessManagementSettings__ApiAccessManagementEndpoint: https://local.altinn.cloud/accessmanagement/api/v1/
+      CertificateSettings__CertificatePath: /certs/jwt-signing.pfx
+      CertificateSettings__CertificatePwd: ${LRR_PFX_PASSWORD:-lrr-dev-only}
+      PostgreSQLSettings__EnableDBConnection: "true"
+      PostgreSQLSettings__AuthenticationDbAdminConnectionString: Host=postgres;Port=5432;Username=auth_authentication_admin;Password=Password;Database=authentication
+      PostgreSQLSettings__AuthenticationDbUserConnectionString: Host=postgres;Port=5432;Username=auth_authentication;Password=Password;Database=authentication
+      QueueStorageSettings__EventLogConnectionString: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;QueueEndpoint=http://azurite:10001/devstoreaccount1
+      FeatureManagement__AuditLog: "false"
+      AccessTokenSettings__AccessTokenSigningCertificateFullPath: /certs/platform-access-token.pfx
+      kvSetting__SecretUri: https://keyvault.local.altinn.cloud:8443/
+      ALTINN_ENVIRONMENT: LRR
+      AzureStorageConfiguration__KeysAccountName: devstoreaccount1
+      AzureStorageConfiguration__KeysAccountKey: *azurite-key
+      AzureStorageConfiguration__KeysBlobEndpoint: http://azurite:10000/devstoreaccount1/
+      AzureStorageConfiguration__KeysContainer: authentication-dataprotection
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:5040/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  authorization:
+    <<: *dotnet-common
+    image: lrr/authorization:local
+    depends_on:
+      postgres: { condition: service_healthy }
+      azurite: { condition: service_healthy }
+      lowkey-vault: { condition: service_healthy }
+    environment:
+      <<: *dotnet-env
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5050
+      ALTINN_ENVIRONMENT: LRR
+      GeneralSettings__OpenIdWellKnownEndpoint: https://local.altinn.cloud/authentication/api/v1/openid/
+      PlatformSettings__ApiRegisterEndpoint: https://local.altinn.cloud/register/api/v1/
+      PlatformSettings__ApiStorageEndpoint: https://local.altinn.cloud/storage/api/v1/
+      PlatformSettings__ApiAccessManagementEndpoint: https://local.altinn.cloud/accessmanagement/api/v1/
+      PlatformSettings__ApiProfileEndpoint: https://local.altinn.cloud/profile/api/v1/
+      PlatformSettings__ApiResourceRegistryEndpoint: https://local.altinn.cloud/resourceregistry/api/v1/
+      AzureStorageConfiguration__MetadataBlobEndpoint: http://azurite:10000/devstoreaccount1
+      AzureStorageConfiguration__DelegationsBlobEndpoint: http://azurite:10000/devstoreaccount1
+      QueueStorageSettings__EventLogConnectionString: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;QueueEndpoint=http://azurite:10001/devstoreaccount1
+      PostgreSQLSettings__EnableDBConnection: "false"
+      FeatureManagement__AccessManagementAsPipForRoles: "true"
+      FeatureManagement__AccessManagementAuthorizedParties: "true"
+      FeatureManagement__DecisionRequestLogRequestOnError: "true"
+      AccessTokenSettings__AccessTokenSigningCertificateFullPath: /certs/platform-access-token.pfx
+      kvSetting__SecretUri: https://keyvault.local.altinn.cloud:8443/
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:5050/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  accessmanagement-init:
+    <<: *dotnet-common
+    image: lrr/accessmanagement:local
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+      lowkey-vault: { condition: service_healthy }
+      register: { condition: service_healthy }
+    environment:
+      <<: *dotnet-env
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5117
+      RunInitOnly: "true"
+      ALTINN_ENVIRONMENT: LRR
+      Environment: lrr
+      GeneralSettings__Hostname: local.altinn.cloud
+      OidcProviders__altinn__Issuer: https://local.altinn.cloud/authentication/api/v1/openid/
+      OidcProviders__altinn__WellKnownConfigEndpoint: https://local.altinn.cloud/authentication/api/v1/openid/.well-known/openid-configuration
+      PlatformSettings__ApiAuthenticationEndpoint: https://local.altinn.cloud/authentication/api/v1/
+      PlatformSettings__ApiAuthorizationEndpoint: https://local.altinn.cloud/authorization/api/v1/
+      PlatformSettings__ApiProfileEndpoint: https://local.altinn.cloud/profile/api/v1/
+      PlatformSettings__ApiRegisterEndpoint: https://local.altinn.cloud/register/api/v1/
+      PlatformSettings__ApiResourceRegistryEndpoint: https://local.altinn.cloud/resourceregistry/api/
+      Platform__Register__Endpoint: https://local.altinn.cloud
+      Platform__ResourceRegistry__Endpoint: https://local.altinn.cloud
+      Platform__AccessManagement__Endpoint: https://local.altinn.cloud
+      PostgreSQLSettings__EnableDBConnection: "true"
+      PostgreSQLSettings__AdminConnectionString: Host=postgres;Port=5432;Username=platform_authorization_admin;Password={0};Database=authorizationdb;Include Error Detail=true
+      PostgreSQLSettings__ConnectionString: Host=postgres;Port=5432;Username=platform_authorization;Password={0};Database=authorizationdb;Include Error Detail=true
+      PostgreSQLSettings__AuthorizationDbAdminPwd: Password
+      PostgreSQLSettings__AuthorizationDbPwd: Password
+      AzureStorageConfiguration__MetadataBlobEndpoint: http://azurite:10000/devstoreaccount1/
+      AzureStorageConfiguration__DelegationsBlobEndpoint: http://azurite:10000/devstoreaccount1/
+      AzureStorageConfiguration__ResourceRegistryBlobEndpoint: http://azurite:10000/devstoreaccount1/
+      FeatureManagement__RightsDelegationApi: "True"
+      FeatureManagement__UseNewQueryRepo: "True"
+      FeatureManagement__AccessMgmt.Core.HostedServices.RegisterSync: "True"
+      FeatureManagement__AccessMgmt.Core.HostedServices.RegisterSync.Import: "True"
+      FeatureManagement__AccessMgmt.Core.HostedServices.ResourceRegistrySync: "False"
+      FeatureManagement__AccessManagement.AuthorizedParties.IncludeAltinn2: "False"
+      FeatureManagement__AccessManagement.AuthorizedParties.UsingConnectionQueryOnly: "True"
+      AccessTokenSettings__AccessTokenSigningCertificateFullPath: /certs/platform-access-token.pfx
+      kvSetting__SecretUri: https://keyvault.local.altinn.cloud:8443/
+
+  accessmanagement:
+    <<: *dotnet-common
+    image: lrr/accessmanagement:local
+    depends_on:
+      postgres: { condition: service_healthy }
+      azurite: { condition: service_healthy }
+      lowkey-vault: { condition: service_healthy }
+      register: { condition: service_healthy }
+      accessmanagement-init: { condition: service_completed_successfully }
+    environment:
+      <<: *dotnet-env
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5117
+      ALTINN_ENVIRONMENT: LRR
+      Environment: lrr
+      GeneralSettings__Hostname: local.altinn.cloud
+      OidcProviders__altinn__Issuer: https://local.altinn.cloud/authentication/api/v1/openid/
+      OidcProviders__altinn__WellKnownConfigEndpoint: https://local.altinn.cloud/authentication/api/v1/openid/.well-known/openid-configuration
+      PlatformSettings__ApiAuthenticationEndpoint: https://local.altinn.cloud/authentication/api/v1/
+      PlatformSettings__ApiAuthorizationEndpoint: https://local.altinn.cloud/authorization/api/v1/
+      PlatformSettings__ApiProfileEndpoint: https://local.altinn.cloud/profile/api/v1/
+      PlatformSettings__ApiRegisterEndpoint: https://local.altinn.cloud/register/api/v1/
+      PlatformSettings__ApiResourceRegistryEndpoint: https://local.altinn.cloud/resourceregistry/api/
+      Platform__Register__Endpoint: https://local.altinn.cloud
+      Platform__ResourceRegistry__Endpoint: https://local.altinn.cloud
+      Platform__AccessManagement__Endpoint: https://local.altinn.cloud
+      PostgreSQLSettings__EnableDBConnection: "true"
+      PostgreSQLSettings__AdminConnectionString: Host=postgres;Port=5432;Username=platform_authorization_admin;Password={0};Database=authorizationdb;Include Error Detail=true
+      PostgreSQLSettings__ConnectionString: Host=postgres;Port=5432;Username=platform_authorization;Password={0};Database=authorizationdb;Include Error Detail=true
+      PostgreSQLSettings__AuthorizationDbAdminPwd: Password
+      PostgreSQLSettings__AuthorizationDbPwd: Password
+      AzureStorageConfiguration__MetadataBlobEndpoint: http://azurite:10000/devstoreaccount1/
+      AzureStorageConfiguration__DelegationsBlobEndpoint: http://azurite:10000/devstoreaccount1/
+      AzureStorageConfiguration__ResourceRegistryBlobEndpoint: http://azurite:10000/devstoreaccount1/
+      FeatureManagement__RightsDelegationApi: "True"
+      FeatureManagement__UseNewQueryRepo: "True"
+      FeatureManagement__AccessMgmt.Core.HostedServices.RegisterSync: "True"
+      FeatureManagement__AccessMgmt.Core.HostedServices.RegisterSync.Import: "True"
+      FeatureManagement__AccessMgmt.Core.HostedServices.ResourceRegistrySync: "False"
+      FeatureManagement__AccessManagement.AuthorizedParties.IncludeAltinn2: "False"
+      FeatureManagement__AccessManagement.AuthorizedParties.UsingConnectionQueryOnly: "True"
+      AccessTokenSettings__AccessTokenSigningCertificateFullPath: /certs/platform-access-token.pfx
+      kvSetting__SecretUri: https://keyvault.local.altinn.cloud:8443/
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:5117/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  storage:
+    <<: *dotnet-common
+    image: lrr/storage:local
+    depends_on:
+      postgres: { condition: service_healthy }
+      azurite: { condition: service_healthy }
+      lowkey-vault: { condition: service_healthy }
+    environment:
+      <<: *dotnet-env
+      # Development keeps Wolverine on the local (in-process) transport; the Dialogporten adapter
+      # queue is an external Altinn system not part of this evaluation.
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5010
+      GeneralSettings__OpenIdWellKnownEndpoint: https://local.altinn.cloud/authentication/api/v1/openid/
+      GeneralSettings__BridgeApiEndpoint: ""
+      # Altinn 2 / SBL bridge is an unavailable legacy government system; upstream switch, not a mock.
+      GeneralSettings__DisableA2Endpoints: "true"
+      GeneralSettings__Hostname: local.altinn.cloud
+      PlatformSettings__ApiAuthorizationEndpoint: https://local.altinn.cloud/authorization/api/v1/
+      PlatformSettings__ApiRegisterEndpoint: https://local.altinn.cloud/register/api/v1/
+      PlatformSettings__ApiProfileEndpoint: https://local.altinn.cloud/profile/api/v1/
+      PlatformSettings__ApiAccessManagementEndpoint: https://local.altinn.cloud/accessmanagement/api/v1/
+      PostgreSqlSettings__EnableDBConnection: "true"
+      PostgreSqlSettings__AdminConnectionString: Host=postgres;Port=5432;Username=platform_storage_admin;Password={0};Database=storagedb
+      PostgreSqlSettings__ConnectionString: Host=postgres;Port=5432;Username=platform_storage;Password={0};Database=storagedb;Include Error Detail=True
+      PostgreSqlSettings__StorageDbAdminPwd: Password
+      PostgreSqlSettings__StorageDbPwd: Password
+      AzureStorageConfiguration__AccountName: devstoreaccount1
+      AzureStorageConfiguration__AccountKey: *azurite-key
+      AzureStorageConfiguration__BlobEndPoint: http://azurite:10000/devstoreaccount1
+      AzureStorageConfiguration__StorageContainer: servicedata
+      AzureStorageConfiguration__OrgStorageAccount: devstoreaccount1
+      AzureStorageConfiguration__OrgStorageContainer: "{0}-appsdata"
+      QueueStorageSettings__ConnectionString: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;QueueEndpoint=http://azurite:10001/devstoreaccount1
+      WolverineSettings__EnableSending: "False"
+      WolverineSettings__PostgresConnectionString: Host=postgres;Port=5432;Username=platform_storage;Password=Password;Database=storagedb;Include Error Detail=True
+      AccessTokenSettings__AccessTokenSigningCertificateFullPath: /certs/platform-access-token.pfx
+      kvSetting__SecretUri: https://keyvault.local.altinn.cloud:8443/
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:5010/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  events:
+    <<: *dotnet-common
+    image: lrr/events:local
+    depends_on:
+      postgres: { condition: service_healthy }
+      servicebus: { condition: service_started }
+      lowkey-vault: { condition: service_healthy }
+    environment:
+      <<: *dotnet-env
+      # Development = upstream's Service Bus emulator mode (no management API / auto-provision); auth + token validation unchanged
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5080
+      GeneralSettings__BaseUri: https://local.altinn.cloud
+      GeneralSettings__OpenIdWellKnownEndpoint: https://local.altinn.cloud/authentication/api/v1/openid/
+      PlatformSettings__ApiEventsEndpoint: https://local.altinn.cloud/events/api/v1/
+      PlatformSettings__ApiProfileEndpoint: https://local.altinn.cloud/profile/api/v1/
+      PlatformSettings__ApiAuthorizationEndpoint: https://local.altinn.cloud/authorization/api/v1/
+      PlatformSettings__ApiRegisterEndpoint: https://local.altinn.cloud/register/api/v1/
+      PostgreSQLSettings__EnableDBConnection: "true"
+      PostgreSQLSettings__AdminConnectionString: Host=postgres;Port=5432;Username=platform_events_admin;Password={0};Database=eventsdb
+      PostgreSQLSettings__ConnectionString: Host=postgres;Port=5432;Username=platform_events;Password=Password;Database=eventsdb;Include Error Detail=True
+      PostgreSQLSettings__EventsDbAdminPwd: Password
+      PostgreSQLSettings__EventsDbPwd: Password
+      WolverineSettings__EnableRegistrationPublisher: "True"
+      WolverineSettings__EnableValidationPublisher: "True"
+      WolverineSettings__EnableRegistrationListener: "True"
+      WolverineSettings__EnableInboundListener: "True"
+      WolverineSettings__EnableOutboundListener: "True"
+      WolverineSettings__EnableValidationListener: "True"
+      WolverineSettings__ServiceBusConnectionString: Endpoint=sb://servicebus;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;
+      AccessTokenSettings__AccessTokenSigningCertificateFullPath: /certs/platform-access-token.pfx
+      kvSetting__SecretUri: https://keyvault.local.altinn.cloud:8443/
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:5080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # ───────────────────────── app runtime support (from Studio) ─────────────────────────
+  workflow-engine:
+    image: ghcr.io/altinn/altinn-studio/runtime-workflow-engine-app:a45a743b78
+    restart: unless-stopped
+    networks: [lrr]
+    depends_on:
+      postgres: { condition: service_healthy }
+    volumes:
+      - ./certs/ca-bundle.crt:/etc/ssl/certs/ca-certificates.crt:ro
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "9090"
+      ConnectionStrings__WorkflowEngine: Host=postgres;Port=5432;Database=workflow_engine;Username=workflow_engine;Password=Password
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: workflow-engine
+      AppCommandSettings__CommandEndpoint: https://app.local.altinn.cloud/{Org}/{App}/instances/{InstanceOwnerPartyId}/{InstanceGuid}/workflow-engine-callbacks/
+
+  pdf3:
+    image: ghcr.io/altinn/altinn-studio/runtime-pdf3-worker:694406e93c
+    restart: unless-stopped
+    networks: [lrr]
+    volumes:
+      - ./certs/ca.crt:/certs/ca.crt:ro
+    environment:
+      PDF3_ENVIRONMENT: localtest
+      PDF3_LOCALTEST_PUBLIC_BASE_URL: https://app.local.altinn.cloud
+      PDF3_QUEUE_SIZE: "3"
+      # headless Chromium trusts the dev CA via the entrypoint's NSS import (certutil takes one cert, not a bundle)
+      STUDIO_CA_BUNDLE: /certs/ca.crt
+
+  # ───────────────────────────── the reporting application ─────────────────────────────
+  app:
+    <<: *dotnet-common
+    build:
+      context: ./app
+    image: lrr/app-frontend-test:local
+    depends_on:
+      storage: { condition: service_healthy }
+      authentication: { condition: service_healthy }
+      authorization: { condition: service_healthy }
+      register: { condition: service_healthy }
+      profile: { condition: service_healthy }
+      events: { condition: service_healthy }
+    volumes:
+      - ./certs/ca-bundle.crt:/etc/ssl/certs/ca-certificates.crt:ro
+      - ./certs:/certs:ro
+      - ./logs/app:/tmp/logtelemetry
+      - ./data/app-keys:/keys
+    environment:
+      <<: *dotnet-env
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5005
+      # Antiforgery/data-protection keys survive container recreation (else sessions' XSRF cookies die on restart)
+      ALTINN_KEYS_DIRECTORY: /keys
+      AppSettings__UseOpenTelemetry: "true"
+      AppSettings__UseOpenTelemetryCollector: "true"
+      # gRPC OTLP needs HTTP/2, which dotnet-env disables; use the collector's http/protobuf receiver
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      # Not local.altinn.cloud: that hostname puts Altinn.App in localtest mode (see gateway/nginx.conf)
+      GeneralSettings__HostName: app.local.altinn.cloud
+      GeneralSettings__ExternalAppBaseUrl: https://app.local.altinn.cloud/{org}/{app}/
+      MaskinportenSettings__Authority: https://mockporten.local.altinn.cloud/
+      MaskinportenSettings__ClientId: lrr-app-maskinporten-client
+      MaskinportenSettings__JwkBase64: ${LRR_MASKINPORTEN_JWK_B64:?run scripts/up.sh}
+      GeneralSettings__AltinnPartyCookieName: AltinnPartyId
+      GeneralSettings__DisableLocaltestValidation: "true"
+      GeneralSettings__DisableAppConfigurationCache: "true"
+      GeneralSettings__EnableMockPdfDataElement: "false"
+      AppSettings__OpenIdWellKnownEndpoint: https://local.altinn.cloud/authentication/api/v1/openid/
+      AppSettings__RuntimeCookieName: AltinnStudioRuntime
+      AppSettings__RegisterEventsWithEventsComponent: "true"
+      PlatformSettings__ApiStorageEndpoint: https://local.altinn.cloud/storage/api/v1/
+      PlatformSettings__ApiRegisterEndpoint: https://local.altinn.cloud/register/api/v1/
+      PlatformSettings__ApiProfileEndpoint: https://local.altinn.cloud/profile/api/v1/
+      PlatformSettings__ApiAuthenticationEndpoint: https://local.altinn.cloud/authentication/api/v1/
+      PlatformSettings__ApiAuthorizationEndpoint: https://local.altinn.cloud/authorization/api/v1/
+      PlatformSettings__ApiEventsEndpoint: https://local.altinn.cloud/events/api/v1/
+      PlatformSettings__ApiAccessManagementEndpoint: https://local.altinn.cloud/accessmanagement/api/v1/
+      PlatformSettings__ApiPdf2Endpoint: http://pdf3:5031/pdf
+      PlatformSettings__ApiWorkflowEngineEndpoint: http://workflow-engine:9090/api/v1/
+      PlatformSettings__SubscriptionKey: lrr-dev-only
+      # Altinn.Common.AccessTokenClient 1.x (used by the app libs) only supports folder + file name.
+      AccessTokenSettings__AccessTokenSigningKeysFolder: /certs/
+      AccessTokenSettings__AccessTokenSigningCertificateFileName: platform-access-token.pfx
+      # Workflow-engine callback code: the app both mints and verifies this token (same as studioctl's local default)
+      AppCodes__WorkflowEngineCallback__0__Id: local-dev
+      AppCodes__WorkflowEngineCallback__0__Code: LOCAL-DEV-ONLY-workflow-engine-callback-secret
+      AppCodes__WorkflowEngineCallback__0__IssuedAt: "2020-01-01T00:00:00Z"
+      AppCodes__WorkflowEngineCallback__0__ExpiresAt: "2999-01-01T00:00:00Z"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:5005/ttd/frontend-test/api/v1/applicationmetadata || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+networks:
+  lrr:
+    name: lrr

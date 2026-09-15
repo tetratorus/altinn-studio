@@ -121,7 +121,12 @@ public class UrlPolicyValidatorTests
     public void IsAllowed_WhenPrivateNetworkTargetsAreAllowed_ShouldReturnTrueForLoopback()
     {
         var validator = new UrlPolicyValidator(
-            new UrlValidationSettings { AllowedList = [], BlockedList = [], AllowPrivateNetworkTargets = true }
+            new UrlValidationSettings
+            {
+                AllowedList = [],
+                BlockedList = [],
+                AllowPrivateNetworkTargets = true,
+            }
         );
 
         bool isAllowed = validator.IsAllowed("http://127.0.0.1:5000/image.png");

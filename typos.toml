@@ -51,6 +51,10 @@ extend-exclude = [
     "src/common/ts/layout-contract/docs/**/*.generated.md",
     "src/Runtime/workflow-engine/docs/presentation/**",
 
+    # Captured runtime output (ids, hashes, log excerpts) from the local
+    # reporting runtime acceptance scripts: pure data.
+    "local-reporting-runtime/evidence/**",
+
     # The spell-check harness itself: fixtures with deliberately planted
     # errors (the self-test copies them elsewhere and checks them with THIS
     # config), the Norwegian glossaries, and the suppression and

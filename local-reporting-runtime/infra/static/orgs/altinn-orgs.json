@@ -1,0 +1,11 @@
+{
+  "orgs": {
+    "ttd": {
+      "name": { "en": "Test Ministry", "nb": "Testdepartementet", "nn": "Testdepartementet" },
+      "logo": "",
+      "orgnr": "991825827",
+      "homepage": "",
+      "environments": ["lrr"]
+    }
+  }
+}

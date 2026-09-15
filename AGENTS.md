@@ -81,6 +81,12 @@ Runner images and cluster integration used to execute GitHub and Gitea CI worklo
 
 `K6` load/performance scripts and `apps` (sample Altinn apps used as E2E/frontend test targets).
 
+### Local reporting runtime — [`local-reporting-runtime`](local-reporting-runtime/AGENTS.md)
+
+Compose stack running the `frontend-test` sample app against the real platform services (Storage,
+Events, Authentication, Authorization, Access Management, Register, Profile) built from sibling fork
+checkouts, for architecture evaluation. Independent of Localtest.
+
 ### Infrastructure (Docker/ops)
 
 Small build/ops images and configs, documented here rather than individually:

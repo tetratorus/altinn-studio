@@ -43,7 +43,7 @@ public class AppScopesController(
         return Ok(response);
     }
 
-    [Authorize]
+    [Authorize(StudioOidcConstants.OrgAccessAuthorizationPolicy)]
     [HttpPut]
     public async Task<IActionResult> UpsertAppScopes(
         string org,
@@ -71,7 +71,7 @@ public class AppScopesController(
         return Ok();
     }
 
-    [Authorize]
+    [Authorize(StudioOidcConstants.OrgAccessAuthorizationPolicy)]
     [HttpGet]
     public async Task<IActionResult> GetAppScopes(string org, string app, CancellationToken cancellationToken)
     {

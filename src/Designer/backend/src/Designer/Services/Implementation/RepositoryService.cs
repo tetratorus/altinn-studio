@@ -733,13 +733,18 @@ public class RepositoryService : IRepository
                     newResource.Identifier
                 );
 
+                string resourceDirectory = ResolvePathWithinParentDirectory(repopath, resourceFileStructureName);
+                if (resourceDirectory is null || string.Equals(resourceDirectory, Path.GetFullPath(repopath)))
+                {
+                    return new StatusCodeResult(400);
+                }
+
                 string fullPathOfNewResource = Path.Combine(
-                    repopath,
-                    resourceFileStructureName,
+                    resourceDirectory,
                     GetResourceFileName(resourceFileStructureName)
                 );
                 string newResourceJson = System.Text.Json.JsonSerializer.Serialize(newResource, _serializerOptions);
-                Directory.CreateDirectory(Path.Combine(repopath, resourceFileStructureName));
+                Directory.CreateDirectory(resourceDirectory);
                 File.WriteAllText(fullPathOfNewResource, newResourceJson);
 
                 return new StatusCodeResult(201);

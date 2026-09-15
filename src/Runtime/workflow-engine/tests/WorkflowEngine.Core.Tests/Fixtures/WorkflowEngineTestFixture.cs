@@ -72,6 +72,15 @@ internal sealed record WorkflowEngineTestFixture(
         services.AddSingleton(httpClientFactoryMock.Object);
         services.AddSingleton(repositoryMock.Object);
         services.AddSingleton(Options.Create(engineSettings));
+        services.AddSingleton(
+            Options.Create(
+                new WebhookCommandSettings
+                {
+                    AllowedHosts = ["example.com", "*.example.com"],
+                    AllowedSchemes = ["http", "https"],
+                }
+            )
+        );
         services.AddLogging();
         services.AddSingleton<IConcurrencyLimiter>(
             new ConcurrencyLimiter(

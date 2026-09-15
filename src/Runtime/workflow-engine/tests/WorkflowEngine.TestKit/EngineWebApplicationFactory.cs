@@ -51,6 +51,10 @@ public sealed class EngineWebApplicationFactory<TProgram> : WebApplicationFactor
                           "BaseInterval": "00:00:00.100",
                           "MaxRetries": 1
                         }
+                      },
+                      "WebhookCommandSettings": {
+                        "AllowedHosts": ["localhost", "127.0.0.1", "example.com", "*.example.com"],
+                        "AllowedSchemes": ["http", "https"]
                       }
                     }
                     """.ToJsonStream()

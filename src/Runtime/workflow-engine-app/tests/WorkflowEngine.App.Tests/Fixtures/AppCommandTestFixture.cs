@@ -68,6 +68,15 @@ internal sealed record AppCommandTestFixture(
         services.AddSingleton(httpClientFactoryMock.Object);
         services.AddSingleton(Options.Create(engineSettings));
         services.AddSingleton(Options.Create(appCommandSettings));
+        services.AddSingleton(
+            Options.Create(
+                new WebhookCommandSettings
+                {
+                    AllowedHosts = ["example.com", "*.example.com"],
+                    AllowedSchemes = ["http", "https"],
+                }
+            )
+        );
         services.AddLogging();
         services.AddSingleton<IConcurrencyLimiter>(
             new ConcurrencyLimiter(

@@ -3,6 +3,7 @@
 ###
 
 POST /api/v1/ttd-e2e-tests/workflows HTTP/1.1
+Authorization: Bearer test-operator-api-key
 Idempotency-Key: idem-Guid_1
 Content-Type: application/json; charset=utf-8
 
@@ -169,6 +170,7 @@ Content-Type: application/json; charset=utf-8
 ###
 
 GET /api/v1/ttd-e2e-tests/workflows/Guid_3/dependency-graph HTTP/1.1
+Authorization: Bearer test-operator-api-key
 
 HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8

@@ -91,6 +91,27 @@ at22, at24, yt01 and prod, but only the at23 and tt02 syncroots carry a `workflo
 and `syncroot/base` does not include the service, so nothing syncs it to the other four.
 `appsettings.prod.json` is scaffolded ahead of that deployment.
 
+### API keys
+
+The engine refuses to start without `EngineAuthentication:ApiKeys` (see the library's
+[AGENTS.md](../workflow-engine/AGENTS.md#authentication-and-namespace-authorization)). Outside
+Development the keys are read from `/app/secrets/secrets.json` (the `workflow-engine-app-secrets`
+Secret, `stringData.secrets.json`), never from `appsettings.<env>.json`:
+
+```json
+{
+  "EngineAuthentication": {
+    "ApiKeys": [
+      { "Name": "ops", "Key": "<random>", "Operator": true },
+      { "Name": "ttd/my-app", "Key": "<random>", "Namespaces": ["ttd/my-app"] }
+    ]
+  }
+}
+```
+
+An app presents its key through `PlatformSettings:WorkflowEngineApiKey`; the key's `Namespaces`
+must contain that app's `{org}/{app}`.
+
 ## Tests
 
 xUnit v3 test project: `tests/WorkflowEngine.App.Tests/`

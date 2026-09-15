@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
+using WorkflowEngine.Core.Authentication;
 using WorkflowEngine.Core.Metadata;
 using WorkflowEngine.Data.Constants;
 using WorkflowEngine.Data.Repository;
@@ -20,12 +22,13 @@ internal static class EngineEndpoints
     public static WebApplication MapEngineEndpoints(this WebApplication app)
     {
         app.MapGet("/api/v1/namespaces", EngineRequestHandlers.ListNamespaces)
+            .RequireAuthorization(EngineAuthentication.OperatorPolicy)
             .WithTags("Namespaces")
             .WithName("ListNamespaces")
             .WithSummary("List namespaces")
             .WithDescription("Lists all distinct namespaces");
 
-        var workflowGroup = app.MapGroup("/api/v1/{namespace}/workflows").WithTags("Workflows");
+        var workflowGroup = app.MapNamespaceGroup("/api/v1/{namespace}/workflows").WithTags("Workflows");
 
         workflowGroup
             .MapPost("", EngineRequestHandlers.EnqueueWorkflows)
@@ -165,6 +168,7 @@ internal static class EngineEndpoints
             );
 
         app.MapGet("/api/v1/throttles", EngineRequestHandlers.ListThrottles)
+            .RequireAuthorization(EngineAuthentication.OperatorPolicy)
             .WithTags("Throttling")
             .WithName("ListNamespaceThrottles")
             .WithSummary("List namespace throttles")
@@ -178,7 +182,7 @@ internal static class EngineEndpoints
                 """
             );
 
-        var throttleGroup = app.MapGroup("/api/v1/{namespace}/throttle").WithTags("Throttling");
+        var throttleGroup = app.MapNamespaceGroup("/api/v1/{namespace}/throttle").WithTags("Throttling");
 
         throttleGroup
             .MapGet("", EngineRequestHandlers.GetThrottle)
@@ -238,7 +242,7 @@ internal static class EngineEndpoints
                 """
             );
 
-        var collectionGroup = app.MapGroup("/api/v1/{namespace}/collections").WithTags("Collections");
+        var collectionGroup = app.MapNamespaceGroup("/api/v1/{namespace}/collections").WithTags("Collections");
 
         collectionGroup
             .MapGet("", EngineRequestHandlers.ListCollections)
@@ -252,7 +256,7 @@ internal static class EngineEndpoints
             .WithSummary("Get collection")
             .WithDescription("Gets a single workflow collection by key, including head workflow statuses");
 
-        var mailboxGroup = app.MapGroup("/api/v1/{namespace}/mailboxes").WithTags("Mailboxes");
+        var mailboxGroup = app.MapNamespaceGroup("/api/v1/{namespace}/mailboxes").WithTags("Mailboxes");
 
         mailboxGroup
             .MapPost("", EngineRequestHandlers.MintMailbox)
@@ -348,6 +352,13 @@ internal static class EngineEndpoints
 
         return app;
     }
+
+    /// <summary>
+    /// Maps a <c>/api/v1/{namespace}/...</c> route group that requires an authenticated API key bound to
+    /// the route's namespace (or an operator key) — see <see cref="EngineAuthentication.ApiPolicy"/>.
+    /// </summary>
+    private static RouteGroupBuilder MapNamespaceGroup(this WebApplication app, string prefix) =>
+        app.MapGroup(prefix).RequireAuthorization(EngineAuthentication.ApiPolicy);
 }
 
 internal static class EngineRequestHandlers

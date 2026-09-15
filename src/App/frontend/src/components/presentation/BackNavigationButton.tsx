@@ -16,6 +16,18 @@ import { useExitSubform } from 'src/hooks/useNavigatePage';
 import { useIsAnyProcessing, useIsThisProcessing, useProcessingMutation } from 'src/hooks/useProcessingMutation';
 import { getDialogIdFromDataValues, getMessageBoxUrl } from 'src/utils/urls/urlHelper';
 
+function getSafeReturnUrl(url: string | undefined): string | undefined {
+  if (!url) {
+    return undefined;
+  }
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function BackNavigationButton(props: { className?: string }) {
   const { langAsString } = useLanguage();
   const isMobile = useIsMobile();
@@ -33,7 +45,7 @@ export function BackNavigationButton(props: { className?: string }) {
   const dialogId = getDialogIdFromDataValues(dataValues);
   const messageBoxUrl = getMessageBoxUrl(party?.partyId, dialogId);
   const hiddenFromInbox = MessageBoxConfigEvaluator.isHiddenFromInbox(applicationMetadata.messageBoxConfig);
-  const returnUrl = window.altinnAppGlobalData.returnUrl;
+  const returnUrl = getSafeReturnUrl(window.altinnAppGlobalData.returnUrl);
 
   if (isSubform) {
     return (

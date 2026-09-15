@@ -92,6 +92,63 @@ public class UrlPolicyValidatorTests
         Assert.False(isAllowed);
     }
 
+    [Theory]
+    [InlineData("http://localhost/image.png")]
+    [InlineData("http://sub.localhost/image.png")]
+    [InlineData("http://127.0.0.1/image.png")]
+    [InlineData("http://127.1.2.3:8080/image.png")]
+    [InlineData("http://10.0.0.5/image.png")]
+    [InlineData("http://172.16.0.1/image.png")]
+    [InlineData("http://192.168.1.1/image.png")]
+    [InlineData("http://169.254.169.254/latest/meta-data/")]
+    [InlineData("http://100.64.0.1/image.png")]
+    [InlineData("http://0.0.0.0/image.png")]
+    [InlineData("http://[::1]/image.png")]
+    [InlineData("http://[fe80::1]/image.png")]
+    [InlineData("http://[fd00::1]/image.png")]
+    [InlineData("http://[::ffff:169.254.169.254]/image.png")]
+    [InlineData("http://[64:ff9b::7f00:1]/image.png")]
+    public void IsAllowed_WhenHostIsPrivateOrLoopbackAddress_ShouldReturnFalse(string url)
+    {
+        var validator = new UrlPolicyValidator(new UrlValidationSettings { AllowedList = [], BlockedList = [] });
+
+        bool isAllowed = validator.IsAllowed(url);
+
+        Assert.False(isAllowed);
+    }
+
+    [Fact]
+    public void IsAllowed_WhenPrivateNetworkTargetsAreAllowed_ShouldReturnTrueForLoopback()
+    {
+        var validator = new UrlPolicyValidator(
+            new UrlValidationSettings { AllowedList = [], BlockedList = [], AllowPrivateNetworkTargets = true }
+        );
+
+        bool isAllowed = validator.IsAllowed("http://127.0.0.1:5000/image.png");
+
+        Assert.True(isAllowed);
+    }
+
+    [Fact]
+    public void IsAllowed_WhenHostIsPublicIpAddress_ShouldReturnTrue()
+    {
+        var validator = new UrlPolicyValidator(new UrlValidationSettings { AllowedList = [], BlockedList = [] });
+
+        bool isAllowed = validator.IsAllowed("https://93.184.216.34/image.png");
+
+        Assert.True(isAllowed);
+    }
+
+    [Fact]
+    public void IsAllowed_WhenUrlContainsUserInfo_ShouldReturnFalse()
+    {
+        var validator = new UrlPolicyValidator(new UrlValidationSettings { AllowedList = [], BlockedList = [] });
+
+        bool isAllowed = validator.IsAllowed("https://user:password@example.com/image.png");
+
+        Assert.False(isAllowed);
+    }
+
     [Fact]
     public void IsAllowed_WhenSubdomainIsExplicitlyAllowed_ShouldReturnTrue()
     {

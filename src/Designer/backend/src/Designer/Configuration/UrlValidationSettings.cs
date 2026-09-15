@@ -8,4 +8,9 @@ public class UrlValidationSettings : ISettingsMarker
 {
     public List<string> AllowedList { get; set; } = [];
     public List<string> BlockedList { get; set; } = [];
+
+    /// <summary>
+    /// Permits requests to loopback, private and link-local network addresses. Intended for local development and tests only.
+    /// </summary>
+    public bool AllowPrivateNetworkTargets { get; set; }
 }

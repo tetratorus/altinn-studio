@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Altinn.Studio.Designer.Configuration;
+using Altinn.Studio.Designer.Helpers;
 using Altinn.Studio.Designer.Services.Interfaces;
 
 namespace Altinn.Studio.Designer.Services.Implementation;
@@ -31,8 +32,18 @@ public class UrlPolicyValidator : IUrlPolicyValidator
             return false;
         }
 
+        if (!string.IsNullOrEmpty(uri.UserInfo))
+        {
+            return false;
+        }
+
         string host = uri.Host.ToLowerInvariant();
         string path = uri.AbsolutePath.TrimEnd('/').ToLowerInvariant();
+
+        if (!_urlValidationSettings.AllowPrivateNetworkTargets && !PublicNetworkAddressHelper.IsPublicHost(host))
+        {
+            return false;
+        }
 
         return !IsBlocked(host) || IsBlockedButWhitelisted(host, path);
     }

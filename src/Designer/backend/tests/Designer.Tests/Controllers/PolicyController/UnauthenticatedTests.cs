@@ -57,7 +57,11 @@ public class UnauthenticatedTests
                 builder.ConfigureTestServices(services =>
                 {
                     services
-                        .AddAuthentication(AnonymousScheme)
+                        .AddAuthentication(options =>
+                        {
+                            options.DefaultScheme = AnonymousScheme;
+                            options.DefaultChallengeScheme = AnonymousScheme;
+                        })
                         .AddScheme<AuthenticationSchemeOptions, AnonymousAuthHandler>(
                             AnonymousScheme,
                             options =>

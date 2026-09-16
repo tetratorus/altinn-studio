@@ -14,6 +14,7 @@ using PolicyAdmin.Models;
 namespace Altinn.Studio.Designer.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("/designer/api/{org}/{app:regex(^(?!datamodels$)[[a-z]][[a-z0-9-]]{{1,28}}[[a-z0-9]]$)}/policy")]
 public class PolicyController : ControllerBase
 {
@@ -56,7 +57,6 @@ public class PolicyController : ControllerBase
     /// <param name="resourceid">The resource Id for the connected policy</param>
     /// <returns>The updated application metadata</returns>
     [HttpGet]
-    [Authorize]
     [Route("{resourceid}")]
     public ActionResult GetResourcePolicy(string org, string app, string resourceid)
     {
@@ -106,7 +106,6 @@ public class PolicyController : ControllerBase
     /// <returns>The updated application metadata</returns>
     [HttpPut]
     [HttpPost]
-    [Authorize]
     [Route("{resourceid}")]
     public async Task<ActionResult> UpdateResourcePolicy(
         string org,

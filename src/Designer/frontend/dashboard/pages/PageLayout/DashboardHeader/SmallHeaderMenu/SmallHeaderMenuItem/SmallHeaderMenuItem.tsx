@@ -19,7 +19,8 @@ export const SmallHeaderMenuItem = ({ menuItem }: SmallHeaderMenuItemProps): Rea
     return (
       <StudioDropdown.Item>
         <StudioDropdown.Button
-          role='menuitem'
+          role='menuitemradio'
+          aria-checked={!!menuItem.isActive}
           className={buttonItemClassName}
           onClick={menuItem.action.onClick}
         >

@@ -67,11 +67,28 @@ describe('SmallHeaderMenuItem', () => {
     });
 
     const trigger = getTriggerButton();
-    await user.click(getMenuItem(menuItemName));
+    await user.click(getMenuItemRadio(menuItemName));
 
     expect(menuItemButtonOnClick).toHaveBeenCalledTimes(1);
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it.each([true, false])(
+    'should render a button item as a menuitemradio with aria-checked=%s when isActive is %s',
+    async (isActive) => {
+      await renderSmallHeaderMenuItem({
+        componentProps: {
+          menuItem: {
+            ...mockMenuItem,
+            action: { type: 'button', onClick: jest.fn() },
+            isActive,
+          },
+        },
+      });
+
+      expect(getMenuItemRadio(menuItemName)).toHaveAttribute('aria-checked', String(isActive));
+    },
+  );
 
   it('should open the link in a new tab when openInNewTab is true', async () => {
     await renderSmallHeaderMenuItem({
@@ -94,6 +111,7 @@ describe('SmallHeaderMenuItem', () => {
 });
 
 const getMenuItem = (name: string): HTMLElement => screen.getByRole('menuitem', { name });
+const getMenuItemRadio = (name: string): HTMLElement => screen.getByRole('menuitemradio', { name });
 
 const getTriggerButton = (): HTMLElement => screen.getByRole('button', { name: triggerButtonText });
 

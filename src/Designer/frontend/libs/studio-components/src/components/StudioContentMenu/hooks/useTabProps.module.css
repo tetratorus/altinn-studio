@@ -15,7 +15,7 @@
 
 .tab.selected {
   border-left: var(--ds-size-1) solid var(--ds-color-accent-border-strong);
-  background-color: white;
+  background-color: var(--ds-color-neutral-background-default);
 }
 
 .tab:hover,

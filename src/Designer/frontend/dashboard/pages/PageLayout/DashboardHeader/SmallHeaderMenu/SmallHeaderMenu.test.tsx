@@ -71,7 +71,9 @@ describe('SmallHeaderMenu', () => {
     });
 
     headerContextValueMock.profileMenuItems.forEach((profileMenuItem) => {
-      expect(screen.getByRole('menuitem', { name: profileMenuItem.itemName })).toBeInTheDocument();
+      expect(
+        screen.getByRole('menuitemradio', { name: profileMenuItem.itemName }),
+      ).toBeInTheDocument();
     });
   });
 

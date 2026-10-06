@@ -209,6 +209,24 @@ describe('StudioProfileMenu', () => {
     expect(screen.getByRole('menuitemradio', { name: menuItem1 })).toBeChecked();
     expect(screen.getByRole('menuitemradio', { name: menuItem4 })).not.toBeChecked();
   });
+
+  it('should use the light color scheme for the dropdown by default', async () => {
+    const user = userEvent.setup();
+    renderStudioProfileMenu();
+
+    await user.click(screen.getByRole('button', { name: mockTriggerButtonText }));
+
+    expect(getDropdownColorSchemeElement()).toHaveAttribute('data-color-scheme', 'light');
+  });
+
+  it('should use the given color scheme for the dropdown', async () => {
+    const user = userEvent.setup();
+    renderStudioProfileMenu({ colorScheme: 'dark' });
+
+    await user.click(screen.getByRole('button', { name: mockTriggerButtonText }));
+
+    expect(getDropdownColorSchemeElement()).toHaveAttribute('data-color-scheme', 'dark');
+  });
 });
 
 const renderStudioProfileMenu = (
@@ -220,3 +238,8 @@ const renderStudioProfileMenu = (
     </StudioPageHeaderContextProvider>,
   );
 };
+
+const getDropdownColorSchemeElement = (): HTMLElement =>
+  // The dropdown popover has no accessible role, so it is located from one of its items
+  // eslint-disable-next-line testing-library/no-node-access
+  screen.getByRole('menuitemradio', { name: menuItem1 }).closest('[data-color-scheme]');

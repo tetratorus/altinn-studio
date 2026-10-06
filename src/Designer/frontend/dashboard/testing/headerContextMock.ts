@@ -6,6 +6,7 @@ import { HeaderMenuItemKey } from '../enums/HeaderMenuItemKey';
 import { HeaderMenuGroupKey } from '../enums/HeaderMenuGroupKey';
 import { type NavigationMenuItem } from '../types/NavigationMenuItem';
 import { type NavigationMenuGroup } from '../types/NavigationMenuGroup';
+import { ColorScheme } from '../enums/ColorScheme';
 
 const menuItemsMock: HeaderMenuItem[] = [
   {
@@ -38,4 +39,5 @@ export const headerContextValueMock: HeaderContextProps = {
   menuItems: menuItemsMock,
   profileMenuItems: profileMenuItemsMock,
   profileMenuGroups: profileMenuGroupsMock,
+  colorScheme: ColorScheme.Light,
 };

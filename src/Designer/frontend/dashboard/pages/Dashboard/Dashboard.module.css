@@ -35,7 +35,7 @@
   display: none;
 }
 .newLink {
-  color: #022f51;
+  color: var(--ds-color-accent-text-default);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -43,7 +43,7 @@
   font-weight: 500;
 }
 .newLink:hover {
-  color: #022f51;
+  color: var(--ds-color-accent-text-default);
   text-decoration: none;
 }
 .newLink:hover span {

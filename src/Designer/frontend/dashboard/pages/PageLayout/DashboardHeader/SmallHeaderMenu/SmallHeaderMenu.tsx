@@ -18,6 +18,7 @@ import { useSelectedContext } from '../../../../hooks/useSelectedContext';
 
 export function SmallHeaderMenu(): ReactElement {
   const { t } = useTranslation();
+  const { colorScheme } = useHeaderContext();
 
   return (
     <StudioDropdown
@@ -25,7 +26,7 @@ export function SmallHeaderMenu(): ReactElement {
       triggerButtonText={t('top_menu.menu')}
       triggerButtonVariant='tertiary'
       data-color='neutral'
-      data-color-scheme='light'
+      data-color-scheme={colorScheme}
     >
       <DropdownContentProfile />
       <DropdownMenuGroups />

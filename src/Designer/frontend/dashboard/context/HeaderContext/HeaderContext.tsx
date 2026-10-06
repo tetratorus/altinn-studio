@@ -16,6 +16,8 @@ import { SelectedContextType } from '../../enums/SelectedContextType';
 import { SETTINGS_BASENAME } from 'app-shared/constants';
 import { userLogoutAfterPath } from 'app-shared/api/paths';
 import { isOrg } from 'dashboard/utils/orgUtils/orgUtils';
+import { ColorScheme } from '../../enums/ColorScheme';
+import { useColorScheme } from '../../hooks/useColorScheme';
 
 export type HeaderContextProps = {
   selectableOrgs?: Organization[];
@@ -23,7 +25,19 @@ export type HeaderContextProps = {
   menuItems: HeaderMenuItem[];
   profileMenuItems: NavigationMenuItem[];
   profileMenuGroups: NavigationMenuGroup[];
+  colorScheme: ColorScheme;
 };
+
+type ColorSchemeOption = {
+  value: ColorScheme;
+  textKey: string;
+};
+
+const colorSchemeOptions: ColorSchemeOption[] = [
+  { value: ColorScheme.Light, textKey: 'dashboard.color_scheme_light' },
+  { value: ColorScheme.Dark, textKey: 'dashboard.color_scheme_dark' },
+  { value: ColorScheme.Auto, textKey: 'dashboard.color_scheme_auto' },
+];
 
 export const HeaderContext = createContext<Partial<HeaderContextProps>>(undefined);
 
@@ -44,6 +58,7 @@ export const HeaderContextProvider = ({
   const subroute = useSubroute();
 
   const { flags } = useFeatureFlagsContext();
+  const [colorScheme, setColorScheme] = useColorScheme();
 
   const handleSetSelectedContext = (context: string | SelectedContextType) => {
     navigate(`${subroute}/${context}${location.search}`);
@@ -92,11 +107,26 @@ export const HeaderContextProvider = ({
     showName: true,
     items: [allMenuItem, ...selectableOrgMenuItems, selfMenuItem],
   };
+  const colorSchemeMenuItems: NavigationMenuItem[] = colorSchemeOptions.map(
+    ({ value, textKey }) => ({
+      action: { type: 'button', onClick: () => setColorScheme(value) },
+      itemName: t(textKey),
+      isActive: colorScheme === value,
+    }),
+  );
+
+  const colorSchemeMenuGroup: NavigationMenuGroup = {
+    name: t('dashboard.color_scheme'),
+    showName: true,
+    items: colorSchemeMenuItems,
+  };
+
   const profileMenuItems: NavigationMenuItem[] = [settingsMenuItem, giteaMenuItem, logOutMenuItem];
 
   const profileMenuGroups: NavigationMenuGroup[] = [
     selectableOrgMenuGroup,
     { items: [settingsMenuItem] },
+    colorSchemeMenuGroup,
     { items: [giteaMenuItem] },
     { items: [logOutMenuItem] },
   ];
@@ -111,6 +141,7 @@ export const HeaderContextProvider = ({
           .map((item) => ({ ...item, name: t(item.name) })),
         profileMenuItems,
         profileMenuGroups,
+        colorScheme,
       }}
     >
       {children}

@@ -55,7 +55,7 @@ function CenterContent(): ReactElement {
 
 function RightContent(): ReactElement {
   const { t } = useTranslation();
-  const { user, profileMenuGroups } = useHeaderContext();
+  const { user, profileMenuGroups, colorScheme } = useHeaderContext();
 
   const isSmallScreen = useMediaQuery(MEDIA_QUERY_MAX_WIDTH);
   const triggerButtonText = useProfileMenuTriggerButtonText();
@@ -75,6 +75,7 @@ function RightContent(): ReactElement {
         />
       }
       profileMenuGroups={mapNavigationMenuToProfileMenu(profileMenuGroups)}
+      colorScheme={colorScheme}
     />
   );
 }

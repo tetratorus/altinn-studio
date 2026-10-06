@@ -6,5 +6,5 @@
 }
 .resourceItem a {
   font-weight: 500;
-  color: black;
+  color: var(--ds-color-neutral-text-default);
 }

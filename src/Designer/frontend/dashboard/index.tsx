@@ -12,6 +12,7 @@ import { ServicesContextProvider } from 'app-shared/contexts/ServicesContext';
 import * as queries from 'app-shared/api/queries';
 import * as mutations from 'app-shared/api/mutations';
 import { EnvironmentConfigProvider } from 'app-shared/contexts/EnvironmentConfigContext';
+import { applyColorScheme, getStoredColorScheme } from './utils/colorSchemeUtils';
 
 i18next.use(initReactI18next).init({
   lng: DEFAULT_LANGUAGE,
@@ -21,6 +22,8 @@ i18next.use(initReactI18next).init({
   },
   fallbackLng: 'nb',
 });
+
+applyColorScheme(getStoredColorScheme());
 
 const container = document.getElementById('root');
 const root = createRoot(container);

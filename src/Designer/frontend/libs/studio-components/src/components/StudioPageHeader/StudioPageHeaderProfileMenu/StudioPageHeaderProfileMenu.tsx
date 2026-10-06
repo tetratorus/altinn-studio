@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode, type ReactElement } from 'react';
 import classes from './StudioPageHeaderProfileMenu.module.css';
 import { StudioDropdown } from '../../StudioDropdown';
+import type { StudioColorScheme } from '../../StudioDropdown/StudioDropdown';
 import { useStudioDropdownContext } from '../../StudioDropdown/context/StudioDropdownContext';
 import { type StudioProfileMenuItem } from './types/StudioProfileMenuItem';
 import { type StudioProfileMenuGroup } from './types/StudioProfileMenuGroup';
@@ -12,6 +13,7 @@ export type StudioPageHeaderProfileMenuProps = {
   profileImage: ReactNode;
   profileMenuGroups: StudioProfileMenuGroup[];
   profileMenuFooter?: ReactNode;
+  colorScheme?: StudioColorScheme;
 };
 
 export const StudioPageHeaderProfileMenu = ({
@@ -19,6 +21,7 @@ export const StudioPageHeaderProfileMenu = ({
   profileImage,
   profileMenuGroups,
   profileMenuFooter,
+  colorScheme = 'light',
 }: StudioPageHeaderProfileMenuProps): ReactElement => {
   const { variant } = useStudioPageHeaderContext();
   const isPreview = variant === 'preview';
@@ -32,7 +35,7 @@ export const StudioPageHeaderProfileMenu = ({
         triggerButtonText={triggerButtonText}
         icon={profileImage}
         iconPlacement='right'
-        data-color-scheme='light'
+        data-color-scheme={colorScheme}
       >
         <StudioPageHeaderMenuContent
           profileMenuGroups={profileMenuGroups}

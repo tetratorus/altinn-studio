@@ -8,6 +8,8 @@ import type { IconPlacement } from '../../types/IconPlacement';
 import { TextWithIcon } from '../TextWithIcon';
 import type { StudioButtonProps } from '../StudioButton';
 
+export type StudioColorScheme = 'light' | 'dark' | 'auto';
+
 export type StudioDropdownProps = {
   icon?: ReactNode;
   iconPlacement?: IconPlacement;
@@ -18,7 +20,7 @@ export type StudioDropdownProps = {
   triggerButtonTitle?: string;
   triggerButtonClassName?: string;
 
-  'data-color-scheme'?: 'light' | 'dark';
+  'data-color-scheme'?: StudioColorScheme;
 } & Omit<WithoutAsChild<DropdownProps>, 'anchorEl' | 'open' | 'onClose' | 'onOpen'>;
 
 export function StudioDropdown({

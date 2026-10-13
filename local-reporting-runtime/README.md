@@ -48,11 +48,11 @@ hostnames (in `/etc/hosts`, resolving to 127.0.0.1) through the gateway.
 
 | Component | Source | Revision / version |
 |---|---|---|
-| Studio (app runtime libs, frontend, sample app, workflow engine, pdf3, this dir) | `tetratorus/altinn-studio` | `0d026001e43086bc41917bad94b2ed355c527f2f` |
+| Studio (app runtime libs, frontend, sample app, workflow engine, pdf3, this dir) | `tetratorus/altinn-studio` | `a980e813d07d5136df8a032168535d938b40e73c` + this directory |
 | Storage | `tetratorus/altinn-storage` | `daa7654a72ef89a0be0c51587dacdfe2f4e1ccdd` |
 | Events | `tetratorus/altinn-events` | `fcc0a70a06eb594968a52fedee8ef37052e61d16` |
-| Authentication (+ `samples/mockporten`) | `tetratorus/altinn-authentication` | `b43b87eb32e4241ca43e9f03f67c09c24417e1e` + PR #4 (MockPorten changes) |
-| Authorization, Access Management | `tetratorus/altinn-auth` | `1bd7288df37e9fc8cdd3c24f12e8f850606616b7` |
+| Authentication (+ `samples/mockporten`) | `tetratorus/altinn-authentication` | `938bc1382efe156940623f81077dd7fccfe9d4a4` (includes PR #4, MockPorten changes) |
+| Authorization, Access Management | `tetratorus/altinn-auth` | `f33afeffab2bb6172cba375d8bd7b4808183e16c` |
 | Register | `tetratorus/altinn-register` | `1bdb4789d7a8abd726abe6bf92ef7da9fd4cbb55` |
 | Profile | `tetratorus/altinn-profile` | `156d8c10b280f02b6b71ca28492ee4587cef8d71` |
 | Workflow engine | `ghcr.io/altinn/altinn-studio/runtime-workflow-engine-app` | `a45a743b78` |
@@ -64,10 +64,12 @@ hostnames (in `/etc/hosts`, resolving to 127.0.0.1) through the gateway.
 | Lowkey Vault | `nagyesta/lowkey-vault` | `7.3.98` |
 | OpenTelemetry collector | `otel/opentelemetry-collector-contrib` | `0.128.0` |
 | Gateway | `nginx` | `1.27-alpine` |
-| Toolchain | Docker 29.7.2, Compose v5.4.0, .NET SDK 10.0.401, Node 24.19.0 / Yarn 1.22.22, Go 1.26.4 | Ubuntu 22.04 x86_64 |
+| Toolchain | Docker 29.7.2, Compose v5.4.0, .NET SDK 10.0.401, Node 24.21.0 / Yarn 4.18.0 (corepack), Go 1.26.4 | Ubuntu 22.04 x86_64 |
 
 The seven `lrr/*:local` images are built by `scripts/build-images.sh` from the sibling checkouts
-(`~/repos/altinn-*`) at the revisions above; `scripts/build-app.sh` publishes the sample app with the
+(`~/repos/altinn-*`) at the revisions above. Those revisions are pinned in [`forks.lock`](forks.lock):
+`scripts/clone-forks.sh` clones and checks them out, and `build-images.sh` refuses to build when a
+checkout is at another commit or has uncommitted changes (override with `LRR_ALLOW_UNPINNED=1`); `scripts/build-app.sh` publishes the sample app with the
 real frontend bundle (`src/App/frontend` → `yarn build`).
 
 ## 3. Layout
@@ -90,7 +92,10 @@ evidence/                 outputs of the acceptance scripts (committed examples,
 
 Prerequisites: Docker + Compose v2, .NET SDK 10, Node 24 + Yarn (for the frontend bundle), `/etc/hosts`
 entries for the hostnames below (one `127.0.0.1 <name>` line each), and the sibling forks cloned next
-to `altinn-studio`.
+to `altinn-studio` (`scripts/clone-forks.sh` does this at the `forks.lock` revisions). For
+`scripts/upstream-tests.sh` also raise the inotify limit, or the Authentication/Auth suites abort with
+"configured user limit (128) on the number of inotify instances": `sudo sysctl -w
+fs.inotify.max_user_instances=1024`.
 
 ```bash
 cd local-reporting-runtime
@@ -156,6 +161,12 @@ ignored.
    Task_1 → Task_2 (validation errors on invalid data, a file-upload component) → Task_3/receipt with
    generated PDFs (pdf3 → Storage).
 4. In a private window, sign in as `15877749964` and open the first user's instance URL → 403.
+
+`node scripts/browser-walkthrough.mjs` replays steps 2–4 in Chromium (Playwright from the Studio repo
+root; set `LRR_CDP_URL` to attach to a running Chrome instead): MockPorten sign-in, Task_1 → Task_3
+(repeating group) → Task_4 (Likert) → Task_5 (data list) → confirm → receipt, then the unauthorized
+user's 403. One screenshot per step lands in `evidence/browser-<ts>/` (latest:
+[`browser-20261013T013728Z`](evidence/browser-20261013T013728Z/README.md), 11/11 PASS).
 5. Look behind the scenes: `docker compose logs -f events storage authorization`, the subscriber's
    deliveries in `data/subscriber/received.jsonl`, traces in `logs/otel/traces.jsonl`, RabbitMQ UI at
    `http://localhost:15672` (guest/guest).
@@ -175,10 +186,11 @@ services; `scripts/restart-check.sh` and `scripts/observability.sh` cover items 
 | 5 | Data + attachments in real Storage (Postgres + Azurite), byte-identical on read; 2 PDFs rendered by pdf3 | PASS | 5 |
 | 6 | Events reach real Events and the local subscriber; workers `Registered → OutboundQueue → WebhookPostResponse 200` | PASS | 6, `events-trace-*.txt`, `subscriber-*.txt` |
 | 7 | Logs/traces with request ids, W3C traceparent/trace ids, instance ids, CloudEvent ids across gateway, app, Storage, Events, workflow engine | PASS | `observability-*.md` |
-| 8 | Upstream tests / smoke tests | see below | |
+| 8 | Upstream tests / smoke tests | PASS (see below) | `upstream-tests-*.md`, `browser-*/` |
 | 9 | Stop and restart without data loss (`down.sh` → `up.sh`, 13 checks incl. attachment sha256, PDFs, process state, events, subscription) | PASS | `restart-*.md` |
 
-Last run: acceptance `passed=26 failed=0`, restart `passed=13 failed=0`.
+Last run (2026-10-13, from a fresh clone and image rebuild): acceptance `passed=26 failed=0`, restart
+`passed=13 failed=0`, observability OK, browser walkthrough 11/11.
 
 ### Upstream builds and tests run
 

@@ -15,6 +15,7 @@ const APP_URL = 'https://app.local.altinn.cloud/ttd/frontend-test/';
 const PID = process.env.LRR_PID ?? '02856221086';
 const UNAUTHORIZED_PID = process.env.LRR_UNAUTHORIZED_PID ?? '15877749964';
 const PASSWORD = process.env.LRR_MOCKPORTEN_PASSWORD ?? 'lrr-synthetic-only';
+const CREATE_PDF = process.env.LRR_CREATE_PDF !== '0';
 const run = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/, 'Z');
 const out = path.resolve(import.meta.dirname, `../evidence/browser-${run}`);
 mkdirSync(out, { recursive: true });
@@ -85,6 +86,12 @@ await step('signed-in-task1-message', async () => {
   await idle();
 });
 await step('task1-goto-task3', async () => {
+  // PDF generation is opt-in per instance (PdfIfRequestedServiceTask reads PdfSettings.CreatePdf).
+  await page
+    .locator('#createPdfToggle')
+    .getByRole('radio', { name: CREATE_PDF ? 'Yes' : 'No' })
+    .check();
+  await idle();
   await page.getByRole('button', { name: 'Velg neste steg' }).click();
   await page.getByRole('radio', { name: 'Repeterende grupper (Task_3)' }).click();
   await page.getByRole('button', { name: 'Gå til' }).click();
@@ -167,8 +174,20 @@ await step('receipt', async () => {
     .getByText(/Skjemaet er sendt inn|Kvittering/i)
     .first()
     .waitFor({ timeout: 60_000 });
-  const pdfs = await page.locator('a[href*="/data/"]').count();
+  const links = page.locator('a[href*="/data/"]');
+  if (CREATE_PDF) await links.first().waitFor({ timeout: 60_000 });
+  const pdfs = await links.count();
   log.push(`  - receipt lists ${pdfs} downloadable data element link(s)`);
+  if (CREATE_PDF) {
+    const href = await links.first().getAttribute('href');
+    const res = await page.request.get(new URL(href, page.url()).toString());
+    const type = res.headers()['content-type'] ?? '';
+    if (!res.ok() || !type.includes('pdf'))
+      throw new Error(`receipt PDF ${href}: ${res.status()} ${type}`);
+    log.push(
+      `  - first receipt PDF downloads: ${res.status()} ${type}, ${(await res.body()).length} bytes`,
+    );
+  }
 });
 
 // Cross-party denial: a second, unrelated user opens the submitted instance's URL in a fresh session.

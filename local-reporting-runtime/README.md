@@ -158,15 +158,16 @@ ignored.
 2. You are redirected to real Authentication (`https://local.altinn.cloud/authentication/...`) and on to
    MockPorten's login form. Enter the shared password and PID `02856221086`.
 3. The app frontend loads with the synthetic user's name (Profile/Register). Start an instance;
-   Task_1 → Task_2 (validation errors on invalid data, a file-upload component) → Task_3/receipt with
-   generated PDFs (pdf3 → Storage).
+   Task_1 (set "Generate PDFs for this submission" to Yes) → Task_2 (validation errors on invalid data,
+   a file-upload component) → Task_3/receipt with generated PDFs (pdf3 → Storage).
 4. In a private window, sign in as `15877749964` and open the first user's instance URL → 403.
 
 `node scripts/browser-walkthrough.mjs` replays steps 2–4 in Chromium (Playwright from the Studio repo
 root; set `LRR_CDP_URL` to attach to a running Chrome instead): MockPorten sign-in, Task_1 → Task_3
 (repeating group) → Task_4 (Likert) → Task_5 (data list) → confirm → receipt, then the unauthorized
-user's 403. One screenshot per step lands in `evidence/browser-<ts>/` (latest:
-[`browser-20261013T013728Z`](evidence/browser-20261013T013728Z/README.md), 11/11 PASS).
+user's 403; it also checks that the first receipt PDF downloads as `application/pdf`
+(`LRR_CREATE_PDF=0` skips PDFs). One screenshot per step lands in `evidence/browser-<ts>/` (latest:
+[`browser-20261013T021523Z`](evidence/browser-20261013T021523Z/README.md), 11/11 PASS).
 5. Look behind the scenes: `docker compose logs -f events storage authorization`, the subscriber's
    deliveries in `data/subscriber/received.jsonl`, traces in `logs/otel/traces.jsonl`, RabbitMQ UI at
    `http://localhost:15672` (guest/guest).
@@ -194,13 +195,21 @@ Last run (2026-10-13, from a fresh clone and image rebuild): acceptance `passed=
 
 ### Upstream builds and tests run
 
+Per-suite counts: [`evidence/upstream-tests-20261013.md`](evidence/upstream-tests-20261013.md).
+
 | Repo / area | Command | Result |
 |---|---|---|
 | Authentication — MockPorten | `dotnet build` + `dotnet test samples/mockporten/Mockporten.sln` | 43 passed, 0 failed, 0 skipped (`DOTNET_ROLL_FORWARD=Major`, runtime 10 only on this box) |
 | All 7 service images | `docker build` from each fork's Dockerfile (release publish) | built |
 | Sample app + frontend | `dotnet publish` + `yarn build` (`src/App/frontend`) | built |
 | Studio spellcheck | `yarn spell:quick` on this directory | see PR CI |
-| Storage / Events / Auth / Register / Profile unit tests | **not run** | skipped: no service source was changed in those forks (config only, via compose); their suites need Testcontainers/Aspire hosts and were out of scope for a config-only change |
+| Storage (in SDK container + throwaway Postgres/Azurite) | `scripts/upstream-tests.sh storage` | 1437 passed, 0 failed, 0 skipped |
+| Events | `scripts/upstream-tests.sh events` | 478 passed, 0 failed, 3 skipped |
+| Authentication | `scripts/upstream-tests.sh authentication` | 626 passed, 0 failed, 2 skipped (needs the inotify limit above) |
+| Authorization (altinn-auth) | `scripts/upstream-tests.sh authorization` | unit 302 passed, integration 157 passed, 0 failed, 0 skipped |
+| Access Management (altinn-auth) | `scripts/upstream-tests.sh accessmanagement` | unit 1101 passed, integration 1055 passed, 0 failed, 0 skipped |
+| Profile (in SDK container + throwaway Postgres) | `scripts/upstream-tests.sh profile` | 914 passed, 0 failed, 0 skipped |
+| Register | `scripts/upstream-tests.sh register` | 1637 passed, 0 failed, 1 skipped (Debug build, as in the fork's PR CI; see the script comment) |
 | Cypress/Playwright E2E for `frontend-test` | **not run** | skipped: they target Localtest URLs and fixtures |
 
 ## 8. Cross-service evidence
@@ -267,8 +276,10 @@ Last run (2026-10-13, from a fresh clone and image rebuild): acceptance `passed=
 - **Synthetic seed writes directly into Register's tables** instead of arriving through its upstream
   import jobs; role/party shapes follow the schema at the pinned revision and must be revisited if
   Register migrations change.
-- **Upstream unit-test suites of Storage/Events/Auth/Register/Profile were not executed** here (no
-  source change in those forks; see §7).
+- **Receipt "i din innboks" link has no target**: there is no Altinn inbox/arbeidsflate in this
+  stack. The PDF links on the receipt work.
+- **PDFs are opt-in per instance**: `frontend-test` only generates PDFs when Task_1's "Generate PDFs
+  for this submission" toggle is Yes (`PdfIfRequestedServiceTask`); `browser-walkthrough.mjs` sets it.
 - **HTTP/2 is disabled** in the shared dotnet env of this compose file, so the app exports OTLP over
   HTTP/protobuf (4318) instead of gRPC.
 - **`app/publish` is a build artifact** (ignored); `scripts/build-app.sh` must be re-run after changing

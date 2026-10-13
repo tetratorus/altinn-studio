@@ -1,6 +1,6 @@
-# Browser walkthrough 20261013T013728Z
+# Browser walkthrough 20261013T021523Z
 
-URL at end: https://app.local.altinn.cloud/ttd/frontend-test/instance/50100001/f827e0f3-19b7-4989-8091-eeba5c042699/ProcessEnd
+URL at end: https://app.local.altinn.cloud/ttd/frontend-test/instance/50100001/4aaeb4e3-1bdb-4cee-94a3-a7d8560e4c14/ProcessEnd
 
 - PASS: mockporten-login-form (01-mockporten-login-form.png)
 - PASS: signed-in-task1-message (02-signed-in-task1-message.png)
@@ -11,6 +11,7 @@ URL at end: https://app.local.altinn.cloud/ttd/frontend-test/instance/50100001/f
 - PASS: task5-datalist (07-task5-datalist.png)
 - PASS: task5-summary (08-task5-summary.png)
 - PASS: confirm (09-confirm.png)
-  - receipt lists 0 downloadable data element link(s)
+  - receipt lists 4 downloadable data element link(s)
+  - first receipt PDF downloads: 200 application/pdf, 31554 bytes
 - PASS: receipt (10-receipt.png)
 - PASS: unauthorized-user-denied (11-unauthorized-user-denied.png)

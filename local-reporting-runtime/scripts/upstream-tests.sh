@@ -45,7 +45,7 @@ PY
 
 record() { # record <suite> <repo> <command> <exit>
   local suite="$1" repo="$2" cmd="${3//$LRR_DIR\//}" code="$4" counts
-  counts=$(trx_counts "$OUTDIR/$suite")
+  counts=$(trx_counts "$OUTDIR/${RESULTS:-$suite}")
   read -r total passed failed skipped <<<"$counts"
   echo "| $suite | \`$repo\` @ \`$(git -C "$R/$repo" rev-parse --short HEAD)\` | \`$cmd\` | $total | $passed | $failed | $skipped | $code |" >> "$SUMMARY"
   log "$suite: total=$total passed=$passed failed=$failed skipped=$skipped exit=$code"
@@ -102,16 +102,18 @@ for suite in "${SUITES[@]}"; do
     authentication) host_suite authentication altinn-authentication . \
               test/Altinn.Platform.Authentication.Tests/Altinn.Platform.Authentication.Tests.csproj \
               --logger trx --results-directory "$OUTDIR/authentication" ;;
-    register) host_suite register altinn-register . --solution Altinn.Register.sln -c Release \
-              --results-directory "$OUTDIR/register" --report-xunit-trx ;;
+    # Debug, like the fork's PR CI: its test-data generator writes identifiers inside Debug.Assert(...),
+    # so a Release build generates constant ids and the integration/persistence suites spin forever.
+    register) host_suite register altinn-register . --solution Altinn.Register.sln \
+              --results-directory "$OUTDIR/register" --report-xunit-trx --timeout 60m ;;
     # altinn-auth CI runs each vertical's unit lane and integration lane separately.
     authorization|accessmanagement)
       app=Altinn.Authorization; [[ "$suite" == accessmanagement ]] && app=Altinn.AccessManagement
-      host_suite "$suite" altinn-auth "src/apps/$app" -c Release -- \
+      RESULTS="$suite/unit" host_suite "$suite" altinn-auth "src/apps/$app" -c Release -- \
         --results-directory "$OUTDIR/$suite/unit" --report-xunit-trx --filter-trait "Category=Unit" --ignore-exit-code 8
       mv "$OUTDIR/$suite.log" "$OUTDIR/$suite-unit.log"
       sed -i '$ s/^| '"$suite"' /| '"$suite"' (unit) /' "$SUMMARY"
-      host_suite "$suite" altinn-auth "src/apps/$app" -c Release -p:TestLane=Integration -- \
+      RESULTS="$suite/integration" host_suite "$suite" altinn-auth "src/apps/$app" -c Release -p:TestLane=Integration -- \
         --results-directory "$OUTDIR/$suite/integration" --report-xunit-trx --filter-trait "Category=Integration" --ignore-exit-code 8
       sed -i '$ s/^| '"$suite"' /| '"$suite"' (integration) /' "$SUMMARY"
       ;;

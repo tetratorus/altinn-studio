@@ -10,11 +10,11 @@ Inventory date: 2026-09-15. Machine: Ubuntu 22.04.5 LTS, x86_64, 8 vCPU, 31 GiB 
 
 | Component | Repository (checkout) | Commit | Branch / date | License in repo | GitHub license metadata |
 | --- | --- | --- | --- | --- | --- |
-| Studio / app runtime / CLI / Localtest / sample apps | `tetratorus/altinn-studio` | `0d026001e43086bc41917bad94b2ed355c527f2f` | `main`, 2026-09-15 | `LICENSE` — MIT (Digdir 2017) | MIT |
+| Studio / app runtime / CLI / Localtest / sample apps | `tetratorus/altinn-studio` | `a980e813d07d5136df8a032168535d938b40e73c` | `main`, 2026-10-13 | `LICENSE` — MIT (Digdir 2017) | MIT |
 | Storage | `tetratorus/altinn-storage` | `daa7654a72ef89a0be0c51587dacdfe2f4e1ccdd` | `main`, 2026-09-15 | **none** | **none** |
 | Events | `tetratorus/altinn-events` | `fcc0a70a06eb594968a52fedee8ef37052e61d16` | `main`, 2026-09-15 | `LICENSE.md` — MIT (Altinn 2022) | MIT |
-| Authentication | `tetratorus/altinn-authentication` | `b43b87eb32e4241ca43e9f03f67c09c24470516e` | `main`, 2026-09-14 | **none** | **none** |
-| Authorization + Access Management | `tetratorus/altinn-auth` | `1bd7288df37e9fc8cdd3c24f12e8f850606616b7` | `main`, 2026-09-15 | `LICENSE` — MIT (Altinn 2024) | MIT |
+| Authentication | `tetratorus/altinn-authentication` | `938bc1382efe156940623f81077dd7fccfe9d4a4` | `main`, 2026-09-16 | **none** | **none** |
+| Authorization + Access Management | `tetratorus/altinn-auth` | `f33afeffab2bb6172cba375d8bd7b4808183e16c` | `main`, 2026-09-25 | `LICENSE` — MIT (Altinn 2024) | MIT |
 | Register | `tetratorus/altinn-register` | `1bdb4789d7a8abd726abe6bf92ef7da9fd4cbb55` | `main`, 2026-09-09 | **no LICENSE file**; `Directory.Build.props` sets `PackageLicenseExpression=MIT` for published NuGet packages only | **none** |
 | Profile | `tetratorus/altinn-profile` (forked during inventory; identical to upstream head) | `156d8c10b280f02b6b71ca28492ee4587cef8d71` | `main`, 2026-09-10 | **none** | **none** |
 
@@ -46,7 +46,7 @@ services that are *referenced* but not in the list.
 | --- | --- | --- | --- |
 | .NET SDK | all services | `altinn-studio/src/App/backend/global.json` 10.0.203 (latestFeature); `src/Runtime/localtest/global.json` 10.0.302; `altinn-auth/global.json` 10.0.107 (latestMajor); `altinn-register/global.json` 10.0.203 + Aspire AppHost SDK 13.4.6; Storage/Events/Authentication/Profile: no `global.json`, Dockerfiles use `sdk:10.0` | 10.0.401 (`~/.dotnet`) — satisfies all pins via roll-forward |
 | Go | `studioctl` (`src/cli/go.mod`: `go 1.26.4`) | 1.26.4 | 1.26.4 (`~/go-sdk/go`) |
-| Node.js / Yarn | `src/App/frontend` (dev server), Studio repo scripts (`yarn docs:validate`, spellcheck) | Node LTS per `README.md` | Node 22.23.2, Yarn 1.22.22 (corepack) |
+| Node.js / Yarn | `src/App/frontend` (dev server), Studio repo scripts (`yarn docs:validate`, spellcheck) | Node LTS per `README.md` | Node 24.21.0, Yarn 4.18.0 (corepack) |
 | Docker Engine + Compose | all infra + service containers | — | Engine 29.7.2, Compose v5.4.0, daemon reachable |
 | Azure Functions Core Tools | `altinn-events/src/Events.Functions` (README) | v4 | not installed — alternative: run Functions host container `mcr.microsoft.com/azure-functions/dotnet-isolated` |
 | Register README | says ".NET 8" | **stale**: `global.json` pins 10.0.203 — treat `global.json` as authoritative |

@@ -37,7 +37,7 @@ for line in open("logs/otel/traces.jsonl"):
                     print(f"{svc:20} trace={sp['traceId']} span={sp['spanId']} {sp['name'][:90]}")
 print(f"{len(seen)} spans")
 PY
-else echo "(no OTLP export yet)"; fi
+else echo "0 spans (no OTLP export yet)"; fi
 echo '```'
 echo; echo "## Events: cloud event ids + worker trace_log for the instance"
 echo '```'
@@ -63,4 +63,5 @@ echo '```'; grep "$INSTANCE" data/subscriber/received.jsonl | python3 -c 'import
 for l in sys.stdin:
     d=json.loads(l); e=d.get("event",d); print(e.get("id"), e.get("type"), d.get("traceparent") or d.get("headers",{}).get("traceparent"))' ; echo '```'
 } > "$OUT"
+grep -qE '^[1-9][0-9]* spans$' "$OUT" || fail "no OTel spans for $INSTANCE in logs/otel/traces.jsonl ($OUT)"
 log "wrote $OUT"; grep -c . "$OUT"

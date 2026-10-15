@@ -7,11 +7,6 @@ APP_DIR="$LRR_DIR/../src/test/apps/frontend-test/App"
 
 # ── 1. certificates ────────────────────────────────────────────────────────────
 ./scripts/gen-certs.sh
-if [[ ! -f certs/lowkey-vault.p12 ]]; then
-  openssl pkcs12 -export -inkey certs/local.altinn.cloud.key -in certs/local.altinn.cloud.crt \
-    -out certs/lowkey-vault.p12 -passout "pass:$LRR_PFX_PASSWORD" -name lowkey
-fi
-chmod 644 certs/*.p12 certs/*.pfx certs/*.key 2>/dev/null || true
 
 # ── 2. key vault secrets (public cert used to VERIFY platform access tokens) ──
 # Issuer names follow Altinn.Common.AccessTokenClient: "<issuer>-access-token-public-cert".

@@ -8,6 +8,8 @@ processors:
 exporters:
   file:
     path: /var/log/otel/traces.jsonl
+    # keep spans across collector restarts (restart-check.sh), the exporter truncates otherwise
+    append: true
   debug:
     verbosity: basic
 service:

@@ -166,7 +166,9 @@ ignored.
 root; set `LRR_CDP_URL` to attach to a running Chrome instead): MockPorten sign-in, Task_1 → Task_3
 (repeating group) → Task_4 (Likert) → Task_5 (data list) → confirm → receipt, then the unauthorized
 user's 403; it also checks that the first receipt PDF downloads as `application/pdf`
-(`LRR_CREATE_PDF=0` skips PDFs). One screenshot per step lands in `evidence/browser-<ts>/` (latest:
+(`LRR_CREATE_PDF=0` skips PDFs). It takes the frontend-test app's "skip to Task_3" shortcut, so Task_2
+(validation errors, file upload) is not exercised in the browser; `scripts/acceptance.sh` covers Task_2
+through the app API (invalid data rejected, attachment upload, process next). One screenshot per step lands in `evidence/browser-<ts>/` (latest:
 [`browser-20261013T021523Z`](evidence/browser-20261013T021523Z/README.md), 11/11 PASS).
 5. Look behind the scenes: `docker compose logs -f events storage authorization`, the subscriber's
    deliveries in `data/subscriber/received.jsonl`, traces in `logs/otel/traces.jsonl`, RabbitMQ UI at
@@ -191,7 +193,10 @@ services; `scripts/restart-check.sh` and `scripts/observability.sh` cover items 
 | 9 | Stop and restart without data loss (`down.sh` → `up.sh`, 13 checks incl. attachment sha256, PDFs, process state, events, subscription) | PASS | `restart-*.md` |
 
 Last run (2026-10-13, from a fresh clone and image rebuild): acceptance `passed=26 failed=0`, restart
-`passed=13 failed=0`, observability OK, browser walkthrough 11/11.
+`passed=13 failed=0`, browser walkthrough 11/11. Re-run 2026-10-15 on the same stack: acceptance 26/26,
+restart 13/13, then observability on the pre-restart instance found 776 OTel spans
+(`observability-20261015T094423Z.md`). The collector's file exporter runs with `append: true`;
+without it a restart truncates `logs/otel/traces.jsonl`, and `observability.sh` now fails on 0 spans.
 
 ### Upstream builds and tests run
 

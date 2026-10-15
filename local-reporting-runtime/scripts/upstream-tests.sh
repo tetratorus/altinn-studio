@@ -16,6 +16,7 @@ RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
 OUTDIR="$LRR_DIR/logs/upstream-tests/$RUN_ID"; mkdir -p "$OUTDIR"
 SUMMARY="$LRR_DIR/evidence/upstream-tests-$RUN_ID.md"
 SDK_IMAGE="mcr.microsoft.com/dotnet/sdk:10.0"
+FAILED=()
 SUITES=("$@"); [[ ${#SUITES[@]} -gt 0 ]] || SUITES=(storage events authentication authorization accessmanagement register profile)
 
 # The default inotify instance limit (128) is exhausted by the WebApplicationFactory-heavy suites.
@@ -49,6 +50,7 @@ record() { # record <suite> <repo> <command> <exit>
   read -r total passed failed skipped <<<"$counts"
   echo "| $suite | \`$repo\` @ \`$(git -C "$R/$repo" rev-parse --short HEAD)\` | \`$cmd\` | $total | $passed | $failed | $skipped | $code |" >> "$SUMMARY"
   log "$suite: total=$total passed=$passed failed=$failed skipped=$skipped exit=$code"
+  [[ "$code" == 0 && "$failed" == 0 ]] || FAILED+=("$suite")
 }
 
 host_suite() { # host_suite <suite> <repo> <workdir-relative> <dotnet test args...>
@@ -121,3 +123,4 @@ for suite in "${SUITES[@]}"; do
   esac
 done
 log "wrote $SUMMARY"
+[[ ${#FAILED[@]} -eq 0 ]] || fail "failed suites: ${FAILED[*]}"

@@ -5,7 +5,8 @@
 //   node scripts/browser-walkthrough.mjs                 launch Playwright's Chromium
 //   LRR_CDP_URL=http://localhost:9222 node scripts/...  attach to an already running Chrome instead
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
@@ -14,18 +15,18 @@ const { chromium } = require(path.resolve(import.meta.dirname, '../../node_modul
 const APP_URL = 'https://app.local.altinn.cloud/ttd/frontend-test/';
 const PID = process.env.LRR_PID ?? '02856221086';
 const UNAUTHORIZED_PID = process.env.LRR_UNAUTHORIZED_PID ?? '15877749964';
+// Read .env the way scripts/lib.sh does (bash `source`), so quoting and comments behave the same.
 const envFile = path.resolve(import.meta.dirname, '../.env');
-const dotenv = existsSync(envFile)
-  ? Object.fromEntries(
-      readFileSync(envFile, 'utf8')
-        .split('\n')
-        .map((l) => l.match(/^\s*(?:export\s+)?([A-Z0-9_]+)=(.*)$/))
-        .filter(Boolean)
-        .map(([, k, v]) => [k, v.trim().replace(/^(['"])(.*)\1$/, '$2')]),
+const envPassword = existsSync(envFile)
+  ? execFileSync(
+      'bash',
+      ['-c', 'set -a; source "$1"; printf %s "${LRR_MOCKPORTEN_PASSWORD:-}"', '_', envFile],
+      {
+        encoding: 'utf8',
+      },
     )
-  : {};
-const PASSWORD =
-  process.env.LRR_MOCKPORTEN_PASSWORD ?? dotenv.LRR_MOCKPORTEN_PASSWORD ?? 'lrr-synthetic-only';
+  : '';
+const PASSWORD = process.env.LRR_MOCKPORTEN_PASSWORD ?? (envPassword || 'lrr-synthetic-only');
 const CREATE_PDF = process.env.LRR_CREATE_PDF !== '0';
 const run = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/, 'Z');
 const out = path.resolve(import.meta.dirname, `../evidence/browser-${run}`);

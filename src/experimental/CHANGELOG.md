@@ -12,6 +12,10 @@ Agent images they work with. The Rust workspace version is a build detail and is
 
 ## [Unreleased]
 
+### Security
+
+- The published Agent images ship Go 1.26.9, which fixes CVE-2026-56857 (GO-2026-6604) in the Go standard library.
+
 ## [0.1.0-preview.2] - 2026-09-15
 
 ### Added

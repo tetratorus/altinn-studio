@@ -1,6 +1,6 @@
 module altinn.studio/pdf3
 
-go 1.26.4
+go 1.26.9
 
 require github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 

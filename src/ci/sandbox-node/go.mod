@@ -1,6 +1,6 @@
 module altinn.studio/sandbox-node
 
-go 1.26.6
+go 1.26.9
 
 require (
 	google.golang.org/grpc v1.83.1

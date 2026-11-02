@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Altinn.Studio.Designer.Infrastructure.GitRepository;
 using Designer.Tests.Utils;
 using Xunit;
 
@@ -219,6 +220,98 @@ public class GitRepositoryTests
         finally
         {
             Directory.Delete(targetPath, true);
+        }
+    }
+
+    [Fact]
+    public async Task SymbolicLinkToFileOutsideRepository_ShouldBeRejectedOnReadAndWrite()
+    {
+        string repositoriesRootDirectory = TestDataHelper.GetTestDataRepositoriesRootDirectory();
+        string repositoryName = TestDataHelper.GenerateTestRepoName();
+        string repositoryDirectory = TestDataHelper.CreateEmptyRepositoryForTest("ttd", repositoryName, "testUser");
+        string outsideDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        string outsideFile = Path.Combine(outsideDirectory, "secret.txt");
+        const string SecretContent = "secret";
+
+        try
+        {
+            Directory.CreateDirectory(outsideDirectory);
+            await File.WriteAllTextAsync(outsideFile, SecretContent);
+            Directory.CreateDirectory(Path.Combine(repositoryDirectory, "App", "wwwroot"));
+            File.CreateSymbolicLink(Path.Combine(repositoryDirectory, "App", "wwwroot", "x.png"), outsideFile);
+
+            var altinnAppGitRepository = new AltinnAppGitRepository(
+                "ttd",
+                repositoryName,
+                "testUser",
+                repositoriesRootDirectory,
+                repositoryDirectory
+            );
+
+            Assert.Throws<ArgumentException>(() => altinnAppGitRepository.GetImageAsStreamByFilePath("x.png"));
+            Assert.False(altinnAppGitRepository.DoesImageExist("x.png"));
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                altinnAppGitRepository.ReadTextByRelativePathAsync("App/wwwroot/x.png")
+            );
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                altinnAppGitRepository.WriteTextByRelativePathAsync("App/wwwroot/x.png", "overwritten")
+            );
+            Assert.Equal(SecretContent, await File.ReadAllTextAsync(outsideFile));
+        }
+        finally
+        {
+            TestDataHelper.DeleteDirectory(repositoryDirectory);
+            Directory.Delete(outsideDirectory, true);
+        }
+    }
+
+    [Fact]
+    public async Task SymbolicLinkToDirectoryOutsideRepository_ShouldBeRejectedOnReadAndWrite()
+    {
+        string repositoriesRootDirectory = TestDataHelper.GetTestDataRepositoriesRootDirectory();
+        string repositoryDirectory = TestDataHelper.CreateEmptyRepositoryForTest(
+            "ttd",
+            TestDataHelper.GenerateTestRepoName(),
+            "testUser"
+        );
+        string outsideDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        string linkPath = Path.Combine(repositoryDirectory, "App", "models");
+        const string SecretContent = "secret";
+
+        try
+        {
+            Directory.CreateDirectory(outsideDirectory);
+            await File.WriteAllTextAsync(Path.Combine(outsideDirectory, "secret.txt"), SecretContent);
+            Directory.CreateDirectory(Path.Combine(repositoryDirectory, "App"));
+            Directory.CreateSymbolicLink(linkPath, outsideDirectory);
+
+            var gitRepository = new Altinn.Studio.Designer.Infrastructure.GitRepository.GitRepository(
+                repositoriesRootDirectory,
+                repositoryDirectory
+            );
+
+            Assert.Throws<ArgumentException>(() => gitRepository.OpenStreamByRelativePath("App/models/secret.txt"));
+            Assert.False(gitRepository.FileExistsByRelativePath("App/models/secret.txt"));
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                gitRepository.ReadTextByRelativePathAsync("App/models/secret.txt")
+            );
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                gitRepository.WriteTextByRelativePathAsync("App/models/new.txt", "planted")
+            );
+            using var stream = new MemoryStream();
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                gitRepository.WriteStreamByRelativePathAsync("App/models/new.txt", stream)
+            );
+            Assert.False(File.Exists(Path.Combine(outsideDirectory, "new.txt")));
+        }
+        finally
+        {
+            if (new DirectoryInfo(linkPath).LinkTarget is not null)
+            {
+                Directory.Delete(linkPath);
+            }
+            TestDataHelper.DeleteDirectory(repositoryDirectory);
+            Directory.Delete(outsideDirectory, true);
         }
     }
 

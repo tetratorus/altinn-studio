@@ -290,3 +290,25 @@ Per-suite counts: [`evidence/upstream-tests-20261102T020106Z.md`](evidence/upstr
   the app or `Altinn.App` libraries.
 - Platform access-token _private_ keys are dev-only PFX files mounted from `certs/`; there is no
   rotation.
+
+## 12. CI/CD
+
+`.github/workflows/local-reporting-runtime.yml` builds every image from the `tetratorus/altinn-*` forks
+(checked out as siblings, like `~/repos/`), runs `up.sh` + `acceptance.sh` on a GitHub-hosted runner and
+uploads `evidence/` as the `lrr-evidence` artifact. It runs on PRs touching this directory, the app runtime
+or `frontend-test`, on pushes to `main`, nightly (to pick up changes pushed to the forks) and on demand.
+
+On `main`, nightly and manual runs with `deploy` ticked, the images are pushed to GHCR
+(`ghcr.io/tetratorus/altinn-lrr-<service>:<sha>` and `:latest`) and the `deploy` job redeploys the stack
+over SSH with `scripts/deploy-remote.sh`: it installs Docker if missing, adds the `/etc/hosts` entries,
+pulls and retags the images, runs `up.sh` with `docker-compose.deploy.yml` (gateway bound to loopback
+only) and then `acceptance.sh`. `./data` on the server persists across deploys.
+
+Repository secrets (deploy is skipped while unset): `DEPLOY_HOST` (server IP/hostname), `DEPLOY_USER`
+(root, or a user with sudo), `DEPLOY_SSH_KEY` (private key whose public half is in that user's
+`authorized_keys`). Server: Ubuntu 22.04/24.04, about 4 vCPU, 16 GB RAM, 60 GB disk, SSH reachable from
+GitHub runners.
+
+Open the deployed stack through a tunnel: `sudo ssh -L 443:127.0.0.1:443 <user>@<host>`, add the
+hostnames from section 4 to your local `/etc/hosts`, trust the server's `certs/ca.crt`, then browse
+https://app.local.altinn.cloud/ttd/frontend-test/.

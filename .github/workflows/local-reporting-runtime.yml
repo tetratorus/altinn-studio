@@ -1,0 +1,221 @@
+name: Local reporting runtime - CI/CD
+
+# Builds the full platform stack (local-reporting-runtime/) from the tetratorus forks, runs the
+# end-to-end acceptance checks, and on main publishes the images to GHCR and redeploys the stack
+# to the server in the DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY secrets (skipped when unset).
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/local-reporting-runtime.yml'
+      - 'local-reporting-runtime/**'
+      - 'src/App/backend/src/**'
+      - 'src/App/frontend/src/**'
+      - 'src/test/apps/frontend-test/**'
+      - '!**/AGENTS.md'
+      - '!**/CLAUDE.md'
+      - '!**/*.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/local-reporting-runtime.yml'
+      - 'local-reporting-runtime/**'
+      - 'src/App/backend/src/**'
+      - 'src/App/frontend/src/**'
+      - 'src/test/apps/frontend-test/**'
+  schedule:
+    - cron: '0 20 * * *' # nightly: picks up changes pushed to the sibling forks
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Publish images and deploy this ref to the server'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/altinn-lrr
+  SERVICES: storage events authentication register profile authorization accessmanagement mockporten app-frontend-test
+
+jobs:
+  build-and-accept:
+    if: github.repository_owner == 'tetratorus'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      publish: ${{ steps.publish.outputs.done }}
+    defaults:
+      run:
+        working-directory: altinn-studio
+    steps:
+      - name: Free disk space
+        working-directory: /
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo docker image prune -af >/dev/null
+          df -h /
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: altinn-studio
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { repository: '${{ github.repository_owner }}/altinn-storage', path: altinn-storage, persist-credentials: false }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { repository: '${{ github.repository_owner }}/altinn-events', path: altinn-events, persist-credentials: false }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { repository: '${{ github.repository_owner }}/altinn-authentication', path: altinn-authentication, persist-credentials: false }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { repository: '${{ github.repository_owner }}/altinn-register', path: altinn-register, persist-credentials: false }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { repository: '${{ github.repository_owner }}/altinn-profile', path: altinn-profile, persist-credentials: false }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { repository: '${{ github.repository_owner }}/altinn-auth', path: altinn-auth, persist-credentials: false }
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setting up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          cache: 'yarn'
+          cache-dependency-path: altinn-studio/yarn.lock
+          node-version: '22'
+
+      - name: Build app frontend bundle
+        run: |
+          yarn install --immutable --inline-builds
+          cd src/App/frontend && yarn run build
+        env:
+          YARN_ENABLE_GLOBAL_CACHE: 'false'
+          YARN_NM_MODE: 'hardlinks-local'
+          HUSKY: '0'
+
+      - name: Host prerequisites
+        run: |
+          for h in local.altinn.cloud app mockporten keyvault subscriber pdf workflow-engine app-frontend otel pgadmin; do
+            [[ $h == local.altinn.cloud ]] && n=$h || n=$h.local.altinn.cloud
+            echo "127.0.0.1 $n" | sudo tee -a /etc/hosts >/dev/null
+          done
+          sudo sysctl -w fs.inotify.max_user_instances=1024
+
+      - name: Build images and start the stack
+        working-directory: altinn-studio/local-reporting-runtime
+        run: LRR_BUILD=1 ./scripts/up.sh
+
+      - name: Acceptance checks
+        working-directory: altinn-studio/local-reporting-runtime
+        run: ./scripts/acceptance.sh
+
+      - name: Resource usage
+        if: always()
+        run: |
+          free -m
+          docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}'
+
+      - name: Service logs on failure
+        if: failure()
+        working-directory: altinn-studio/local-reporting-runtime
+        run: |
+          source scripts/lib.sh
+          docker compose ps -a
+          docker compose logs --no-color --tail 150
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: lrr-evidence
+          path: altinn-studio/local-reporting-runtime/evidence/
+          if-no-files-found: ignore
+
+      - name: Publish images to GHCR
+        id: publish
+        if: github.event_name == 'push' || github.event_name == 'schedule' || inputs.deploy
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          for s in $SERVICES; do
+            for t in "${{ github.sha }}" latest; do
+              docker tag "lrr/$s:local" "$IMAGE_PREFIX-$s:$t"
+              docker push -q "$IMAGE_PREFIX-$s:$t"
+            done
+          done
+          echo "done=true" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: build-and-accept
+    if: needs.build-and-accept.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
+    concurrency:
+      group: lrr-deploy
+      cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+    steps:
+      - name: Check deploy target
+        id: target
+        run: |
+          if [[ -z "$DEPLOY_HOST" || -z "$DEPLOY_USER" ]]; then
+            echo "::notice::DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY not set; skipping deploy"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.target.outputs.ok
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            local-reporting-runtime
+            src/test/apps/frontend-test/App/config
+
+      - name: Configure SSH
+        if: steps.target.outputs.ok
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -T 30 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          printf 'Host target\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  ServerAliveInterval 30\n' \
+            "$DEPLOY_HOST" "$DEPLOY_USER" > ~/.ssh/config
+
+      - name: Sync runtime files
+        if: steps.target.outputs.ok
+        run: |
+          ssh target 'mkdir -p altinn/altinn-studio/src/test/apps/frontend-test/App altinn/altinn-authentication/samples/mockporten'
+          rsync -az --delete --exclude certs/ --exclude data/ --exclude logs/ --exclude evidence/ --exclude .env --exclude app/publish/ \
+            local-reporting-runtime/ target:altinn/altinn-studio/local-reporting-runtime/
+          rsync -az --delete src/test/apps/frontend-test/App/config/ target:altinn/altinn-studio/src/test/apps/frontend-test/App/config/
+
+      - name: Deploy
+        if: steps.target.outputs.ok
+        run: |
+          # shellcheck disable=SC2029 # values are intentionally expanded on the runner
+          ssh target "GHCR_USER='${{ github.actor }}' GHCR_TOKEN='${{ secrets.GITHUB_TOKEN }}' IMAGE_PREFIX='$IMAGE_PREFIX' \
+            IMAGE_TAG='${{ github.sha }}' SERVICES='$SERVICES' bash altinn/altinn-studio/local-reporting-runtime/scripts/deploy-remote.sh"
+
+      - name: Fetch evidence
+        if: always() && steps.target.outputs.ok
+        run: rsync -az target:altinn/altinn-studio/local-reporting-runtime/evidence/ evidence/ || true
+
+      - name: Upload evidence
+        if: always() && steps.target.outputs.ok
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: lrr-deploy-evidence
+          path: evidence/
+          if-no-files-found: ignore

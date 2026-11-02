@@ -48,6 +48,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     outputs:
       publish: ${{ steps.publish.outputs.done }}
     defaults:
@@ -108,6 +109,7 @@ jobs:
           sudo sysctl -w fs.inotify.max_user_instances=1024
 
       - name: Build images and start the stack
+        id: stack
         working-directory: altinn-studio/local-reporting-runtime
         run: LRR_BUILD=1 ./scripts/up.sh
 
@@ -136,6 +138,29 @@ jobs:
           name: lrr-evidence
           path: altinn-studio/local-reporting-runtime/evidence/
           if-no-files-found: ignore
+
+      - name: Security scan of the built images (Trivy)
+        if: always() && steps.stack.outcome == 'success'
+        run: |
+          mkdir -p ../trivy
+          echo "| image | critical | high |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+          for s in $SERVICES; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/../trivy:/out" -v trivy-cache:/root/.cache \
+              aquasec/trivy:0.76.1 image -q --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+              --format sarif -o "/out/$s.raw.sarif" "lrr/$s:local"
+            jq --arg id "trivy/$s/" '.runs[].automationDetails.id = $id' "../trivy/$s.raw.sarif" > "../trivy/$s.sarif"
+            rm "../trivy/$s.raw.sarif"
+            c=$(jq '[.runs[].results[] | select(.level == "error")] | length' "../trivy/$s.sarif")
+            h=$(jq '[.runs[].results[] | select(.level == "warning")] | length' "../trivy/$s.sarif")
+            echo "| $s | $c | $h |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Upload scan results to the Security tab
+        if: always() && steps.stack.outcome == 'success'
+        uses: github/codeql-action/upload-sarif@c4dd10e44af883a891fe31ced449bcb4a6728b9b # v3.37.6
+        with:
+          sarif_file: trivy
 
       - name: Publish images to GHCR
         id: publish

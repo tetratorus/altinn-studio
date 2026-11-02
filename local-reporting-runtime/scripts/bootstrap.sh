@@ -7,6 +7,7 @@ APP_DIR="$LRR_DIR/../src/test/apps/frontend-test/App"
 
 # ── 1. certificates ────────────────────────────────────────────────────────────
 ./scripts/gen-certs.sh
+load_maskinporten_client
 
 # ── 2. key vault secrets (public cert used to VERIFY platform access tokens) ──
 # Issuer names follow Altinn.Common.AccessTokenClient: "<issuer>-access-token-public-cert".

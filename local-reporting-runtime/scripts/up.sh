@@ -5,6 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 mkdir -p data/postgres data/azurite data/rabbitmq data/mssql data/lowkey-vault data/subscriber data/app-keys logs/otel logs/app
 chmod 777 data/mssql data/lowkey-vault data/subscriber data/app-keys logs/otel logs/app   # written by non-root containers
 ./scripts/gen-certs.sh
+load_maskinporten_client
 
 if [[ "${LRR_BUILD:-0}" == "1" ]]; then
   ./scripts/build-images.sh

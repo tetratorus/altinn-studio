@@ -52,6 +52,8 @@ for s in app storage events authorization workflow-engine pdf3 subscriber; do
   echo "$s: $n log lines"
 done
 echo '```'
+# The samples below stop reading with head; without this, docker compose logs dies of SIGPIPE and set -e aborts.
+set +o pipefail
 echo; echo "### Sample: app log lines with the instance id"
 echo '```'; docker compose logs --no-log-prefix app 2>/dev/null | { grep "$IID" || true; } | head -8 | cut -c1-300; echo '```'
 echo; echo "### Sample: workflow-engine log lines with the instance id"

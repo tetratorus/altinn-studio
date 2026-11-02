@@ -46,25 +46,25 @@ hostnames (in `/etc/hosts`, resolving to 127.0.0.1) through the gateway.
 
 ## 2. Repository and version manifest
 
-| Component | Source | Revision / version |
-|---|---|---|
-| Studio (app runtime libs, frontend, sample app, workflow engine, pdf3, this dir) | `tetratorus/altinn-studio` | `a980e813d07d5136df8a032168535d938b40e73c` + this directory |
-| Storage | `tetratorus/altinn-storage` | `daa7654a72ef89a0be0c51587dacdfe2f4e1ccdd` |
-| Events | `tetratorus/altinn-events` | `fcc0a70a06eb594968a52fedee8ef37052e61d16` |
-| Authentication (+ `samples/mockporten`) | `tetratorus/altinn-authentication` | `938bc1382efe156940623f81077dd7fccfe9d4a4` (includes PR #4, MockPorten changes) |
-| Authorization, Access Management | `tetratorus/altinn-auth` | `f33afeffab2bb6172cba375d8bd7b4808183e16c` |
-| Register | `tetratorus/altinn-register` | `1bdb4789d7a8abd726abe6bf92ef7da9fd4cbb55` |
-| Profile | `tetratorus/altinn-profile` | `156d8c10b280f02b6b71ca28492ee4587cef8d71` |
-| Workflow engine | `ghcr.io/altinn/altinn-studio/runtime-workflow-engine-app` | `a45a743b78` |
-| pdf3 | `ghcr.io/altinn/altinn-studio/runtime-pdf3-worker` | `694406e93c` |
-| PostgreSQL | `postgres` | `16-alpine` |
-| Azurite | `mcr.microsoft.com/azure-storage/azurite` | `3.35.0` |
-| RabbitMQ | `rabbitmq` | `4.1-management-alpine` |
-| Service Bus emulator | `mcr.microsoft.com/azure-messaging/servicebus-emulator` + `mssql/server:2022-latest` | `latest` (only tag published) |
-| Lowkey Vault | `nagyesta/lowkey-vault` | `7.3.98` |
-| OpenTelemetry collector | `otel/opentelemetry-collector-contrib` | `0.128.0` |
-| Gateway | `nginx` | `1.27-alpine` |
-| Toolchain | Docker 29.7.2, Compose v5.4.0, .NET SDK 10.0.401, Node 24.21.0 / Yarn 4.18.0 (corepack), Go 1.26.4 | Ubuntu 22.04 x86_64 |
+| Component                                                                        | Source                                                                                             | Revision / version                                                              |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Studio (app runtime libs, frontend, sample app, workflow engine, pdf3, this dir) | `tetratorus/altinn-studio`                                                                         | `a980e813d07d5136df8a032168535d938b40e73c` + this directory                     |
+| Storage                                                                          | `tetratorus/altinn-storage`                                                                        | `daa7654a72ef89a0be0c51587dacdfe2f4e1ccdd`                                      |
+| Events                                                                           | `tetratorus/altinn-events`                                                                         | `fcc0a70a06eb594968a52fedee8ef37052e61d16`                                      |
+| Authentication (+ `samples/mockporten`)                                          | `tetratorus/altinn-authentication`                                                                 | `938bc1382efe156940623f81077dd7fccfe9d4a4` (includes PR #4, MockPorten changes) |
+| Authorization, Access Management                                                 | `tetratorus/altinn-auth`                                                                           | `f33afeffab2bb6172cba375d8bd7b4808183e16c`                                      |
+| Register                                                                         | `tetratorus/altinn-register`                                                                       | `1bdb4789d7a8abd726abe6bf92ef7da9fd4cbb55`                                      |
+| Profile                                                                          | `tetratorus/altinn-profile`                                                                        | `156d8c10b280f02b6b71ca28492ee4587cef8d71`                                      |
+| Workflow engine                                                                  | `ghcr.io/altinn/altinn-studio/runtime-workflow-engine-app`                                         | `a45a743b78`                                                                    |
+| pdf3                                                                             | `ghcr.io/altinn/altinn-studio/runtime-pdf3-worker`                                                 | `694406e93c`                                                                    |
+| PostgreSQL                                                                       | `postgres`                                                                                         | `16-alpine`                                                                     |
+| Azurite                                                                          | `mcr.microsoft.com/azure-storage/azurite`                                                          | `3.35.0`                                                                        |
+| RabbitMQ                                                                         | `rabbitmq`                                                                                         | `4.1-management-alpine`                                                         |
+| Service Bus emulator                                                             | `mcr.microsoft.com/azure-messaging/servicebus-emulator` + `mssql/server:2022-latest`               | `latest` (only tag published)                                                   |
+| Lowkey Vault                                                                     | `nagyesta/lowkey-vault`                                                                            | `7.3.98`                                                                        |
+| OpenTelemetry collector                                                          | `otel/opentelemetry-collector-contrib`                                                             | `0.128.0`                                                                       |
+| Gateway                                                                          | `nginx`                                                                                            | `1.27-alpine`                                                                   |
+| Toolchain                                                                        | Docker 29.7.2, Compose v5.4.0, .NET SDK 10.0.403, Node 24.22.2 / Yarn 4.18.0 (corepack), Go 1.26.4 | Ubuntu 22.04 x86_64                                                             |
 
 The seven `lrr/*:local` images are built by `scripts/build-images.sh` from the sibling checkouts
 (`~/repos/altinn-*`) at the revisions above. Those revisions are pinned in [`forks.lock`](forks.lock):
@@ -134,12 +134,12 @@ locally and dev-only.
 
 Nothing here refers to a real person or organization. PIDs are Tenor-style synthetic (month +80).
 
-| Identity | Values | Purpose |
-|---|---|---|
-| Authorized person | PID `02856221086`, party `50100001`, user `1001`, role `DAGL` for the org | Allowed by the app policy |
-| Unauthorized person | PID `15877749964`, party `50100002`, user `1002`, no roles | Denied for other parties |
-| Reporting organization | orgno `310548510`, party `50100003` | Instance owner for org reporting |
-| Service owner `ttd` | orgno `991825827`, party `50100004` | App owner / machine token consumer |
+| Identity               | Values                                                                    | Purpose                            |
+| ---------------------- | ------------------------------------------------------------------------- | ---------------------------------- |
+| Authorized person      | PID `02856221086`, party `50100001`, user `1001`, role `DAGL` for the org | Allowed by the app policy          |
+| Unauthorized person    | PID `15877749964`, party `50100002`, user `1002`, no roles                | Denied for other parties           |
+| Reporting organization | orgno `310548510`, party `50100003`                                       | Instance owner for org reporting   |
+| Service owner `ttd`    | orgno `991825827`, party `50100004`                                       | App owner / machine token consumer |
 
 Seeded by `infra/register/seed.sql` into Register; Access Management imports parties/roles through its
 real `RegisterSync` hosted service (RabbitMQ), so the Authorization PDP decides on real Access
@@ -169,10 +169,9 @@ user's 403; it also checks that the first receipt PDF downloads as `application/
 (`LRR_CREATE_PDF=0` skips PDFs). It takes the frontend-test app's "skip to Task_3" shortcut, so Task_2
 (validation errors, file upload) is not exercised in the browser; `scripts/acceptance.sh` covers Task_2
 through the app API (invalid data rejected, attachment upload, process next). One screenshot per step lands in `evidence/browser-<ts>/` (latest:
-[`browser-20261013T021523Z`](evidence/browser-20261013T021523Z/README.md), 11/11 PASS).
-5. Look behind the scenes: `docker compose logs -f events storage authorization`, the subscriber's
-   deliveries in `data/subscriber/received.jsonl`, traces in `logs/otel/traces.jsonl`, RabbitMQ UI at
-   `http://localhost:15672` (guest/guest).
+[`browser-20261102T020818Z`](evidence/browser-20261102T020818Z/README.md), 11/11 PASS). 5. Look behind the scenes: `docker compose logs -f events storage authorization`, the subscriber's
+deliveries in `data/subscriber/received.jsonl`, traces in `logs/otel/traces.jsonl`, RabbitMQ UI at
+`http://localhost:15672` (guest/guest).
 
 ## 7. Acceptance tests and results
 
@@ -180,42 +179,42 @@ through the app API (invalid data rejected, attachment upload, process next). On
 services; `scripts/restart-check.sh` and `scripts/observability.sh` cover items 9 and 7. Latest results
 (committed in `evidence/`):
 
-| # | Criterion | Result | Evidence |
-|---|---|---|---|
-| 1 | Synthetic sign-in through real Authentication via local IdP (MockPorten, PKCE, nonce, RFC 9207 `iss`, strict issuer validation on) | PASS | `acceptance-*.md` 1 |
-| 2 | User/party/profile resolved through real Register + Profile | PASS | 2 (`userId=1001 partyId=50100001`) |
-| 3 | Real Authorization + Access Management: allow authorized, deny unauthorized (read other's instance, instantiate for other party, instantiate for org → 403) | PASS | 3a, 3b |
-| 4 | Valid input accepted, invalid rejected (Task_2 validator → 2 errors, `process/next` 409) | PASS | 4 |
-| 5 | Data + attachments in real Storage (Postgres + Azurite), byte-identical on read; 2 PDFs rendered by pdf3 | PASS | 5 |
-| 6 | Events reach real Events and the local subscriber; workers `Registered → OutboundQueue → WebhookPostResponse 200` | PASS | 6, `events-trace-*.txt`, `subscriber-*.txt` |
-| 7 | Logs/traces with request ids, W3C traceparent/trace ids, instance ids, CloudEvent ids across gateway, app, Storage, Events, workflow engine | PASS | `observability-*.md` |
-| 8 | Upstream tests / smoke tests | PASS (see below) | `upstream-tests-*.md`, `browser-*/` |
-| 9 | Stop and restart without data loss (`down.sh` → `up.sh`, 13 checks incl. attachment sha256, PDFs, process state, events, subscription) | PASS | `restart-*.md` |
+| #   | Criterion                                                                                                                                                   | Result           | Evidence                                    |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------- |
+| 1   | Synthetic sign-in through real Authentication via local IdP (MockPorten, PKCE, nonce, RFC 9207 `iss`, strict issuer validation on)                          | PASS             | `acceptance-*.md` 1                         |
+| 2   | User/party/profile resolved through real Register + Profile                                                                                                 | PASS             | 2 (`userId=1001 partyId=50100001`)          |
+| 3   | Real Authorization + Access Management: allow authorized, deny unauthorized (read other's instance, instantiate for other party, instantiate for org → 403) | PASS             | 3a, 3b                                      |
+| 4   | Valid input accepted, invalid rejected (Task_2 validator → 2 errors, `process/next` 409)                                                                    | PASS             | 4                                           |
+| 5   | Data + attachments in real Storage (Postgres + Azurite), byte-identical on read; 2 PDFs rendered by pdf3                                                    | PASS             | 5                                           |
+| 6   | Events reach real Events and the local subscriber; workers `Registered → OutboundQueue → WebhookPostResponse 200`                                           | PASS             | 6, `events-trace-*.txt`, `subscriber-*.txt` |
+| 7   | Logs/traces with request ids, W3C traceparent/trace ids, instance ids, CloudEvent ids across gateway, app, Storage, Events, workflow engine                 | PASS             | `observability-*.md`                        |
+| 8   | Upstream tests / smoke tests                                                                                                                                | PASS (see below) | `upstream-tests-*.md`, `browser-*/`         |
+| 9   | Stop and restart without data loss (`down.sh` → `up.sh`, 13 checks incl. attachment sha256, PDFs, process state, events, subscription)                      | PASS             | `restart-*.md`                              |
 
-Last run (2026-10-13, from a fresh clone and image rebuild): acceptance `passed=26 failed=0`, restart
-`passed=13 failed=0`, browser walkthrough 11/11. Re-run 2026-10-15 on the same stack: acceptance 26/26,
-restart 13/13, then observability on the pre-restart instance found 776 OTel spans
-(`observability-20261015T094423Z.md`). The collector's file exporter runs with `append: true`;
-without it a restart truncates `logs/otel/traces.jsonl`, and `observability.sh` now fails on 0 spans.
+Last run (2026-11-02, fresh VM: forks cloned at `forks.lock`, toolchain installed, every image rebuilt):
+acceptance `passed=26 failed=0`, restart `passed=13 failed=0`, browser walkthrough 11/11, observability
+761 OTel spans for the acceptance instance (`observability-20261102T020836Z.md`). The collector's file
+exporter runs with `append: true`; without it a restart truncates `logs/otel/traces.jsonl`, and
+`observability.sh` fails on 0 spans.
 
 ### Upstream builds and tests run
 
-Per-suite counts: [`evidence/upstream-tests-20261013.md`](evidence/upstream-tests-20261013.md).
+Per-suite counts: [`evidence/upstream-tests-20261102T020106Z.md`](evidence/upstream-tests-20261102T020106Z.md).
 
-| Repo / area | Command | Result |
-|---|---|---|
-| Authentication — MockPorten | `dotnet build` + `dotnet test samples/mockporten/Mockporten.sln` | 43 passed, 0 failed, 0 skipped (`DOTNET_ROLL_FORWARD=Major`, runtime 10 only on this box) |
-| All 7 service images | `docker build` from each fork's Dockerfile (release publish) | built |
-| Sample app + frontend | `dotnet publish` + `yarn build` (`src/App/frontend`) | built |
-| Studio spellcheck | `yarn spell:quick` on this directory | see PR CI |
-| Storage (in SDK container + throwaway Postgres/Azurite) | `scripts/upstream-tests.sh storage` | 1437 passed, 0 failed, 0 skipped |
-| Events | `scripts/upstream-tests.sh events` | 478 passed, 0 failed, 3 skipped |
-| Authentication | `scripts/upstream-tests.sh authentication` | 626 passed, 0 failed, 2 skipped (needs the inotify limit above) |
-| Authorization (altinn-auth) | `scripts/upstream-tests.sh authorization` | unit 302 passed, integration 157 passed, 0 failed, 0 skipped |
-| Access Management (altinn-auth) | `scripts/upstream-tests.sh accessmanagement` | unit 1101 passed, integration 1055 passed, 0 failed, 0 skipped |
-| Profile (in SDK container + throwaway Postgres) | `scripts/upstream-tests.sh profile` | 914 passed, 0 failed, 0 skipped |
-| Register | `scripts/upstream-tests.sh register` | 1637 passed, 0 failed, 1 skipped (Debug build, as in the fork's PR CI; see the script comment) |
-| Cypress/Playwright E2E for `frontend-test` | **not run** | skipped: they target Localtest URLs and fixtures |
+| Repo / area                                             | Command                                                          | Result                                                                                         |
+| ------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Authentication — MockPorten                             | `dotnet build` + `dotnet test samples/mockporten/Mockporten.sln` | 43 passed, 0 failed, 0 skipped (`DOTNET_ROLL_FORWARD=Major`, runtime 10 only on this box)      |
+| All 7 service images                                    | `docker build` from each fork's Dockerfile (release publish)     | built                                                                                          |
+| Sample app + frontend                                   | `dotnet publish` + `yarn build` (`src/App/frontend`)             | built                                                                                          |
+| Studio spellcheck                                       | `yarn spell:quick` on this directory                             | see PR CI                                                                                      |
+| Storage (in SDK container + throwaway Postgres/Azurite) | `scripts/upstream-tests.sh storage`                              | 1437 passed, 0 failed, 0 skipped                                                               |
+| Events                                                  | `scripts/upstream-tests.sh events`                               | 478 passed, 0 failed, 3 skipped                                                                |
+| Authentication                                          | `scripts/upstream-tests.sh authentication`                       | 626 passed, 0 failed, 2 skipped (needs the inotify limit above)                                |
+| Authorization (altinn-auth)                             | `scripts/upstream-tests.sh authorization`                        | unit 302 passed, integration 157 passed, 0 failed, 0 skipped                                   |
+| Access Management (altinn-auth)                         | `scripts/upstream-tests.sh accessmanagement`                     | unit 1101 passed, integration 1055 passed, 0 failed, 0 skipped                                 |
+| Profile (in SDK container + throwaway Postgres)         | `scripts/upstream-tests.sh profile`                              | 914 passed, 0 failed, 0 skipped                                                                |
+| Register                                                | `scripts/upstream-tests.sh register`                             | 1637 passed, 0 failed, 1 skipped (Debug build, as in the fork's PR CI; see the script comment) |
+| Cypress/Playwright E2E for `frontend-test`              | **not run**                                                      | skipped: they target Localtest URLs and fixtures                                               |
 
 ## 8. Cross-service evidence
 
@@ -234,37 +233,37 @@ Per-suite counts: [`evidence/upstream-tests-20261013.md`](evidence/upstream-test
 
 `docker compose ps -a` after `up.sh` (24 containers; 3 are one-shot init jobs that exit 0):
 
-| Container | Kind | Image | Health |
-|---|---|---|---|
-| app | Real Altinn app (`ttd/frontend-test`, Altinn.App from this repo) | `lrr/app-frontend-test:local` | healthy |
-| storage, events, authentication, authorization, accessmanagement, register, profile | Real Altinn platform services | `lrr/<name>:local` | healthy |
-| register-init, profile-init, accessmanagement-init | Migration/seed jobs | same images | exited 0 |
-| workflow-engine | Real Altinn runtime (process engine) | `runtime-workflow-engine-app:a45a743b78` | started (no health endpoint exposed) |
-| pdf3 | Real Altinn runtime (PDF worker, Chromium) | `runtime-pdf3-worker:694406e93c` | started |
-| mockporten | External-system substitute (ID-porten + Maskinporten), from Authentication repo | `lrr/mockporten:local` | started |
-| subscriber | Local Events webhook subscriber (test double for a downstream system) | `python:3.12-alpine` | started |
-| gateway | Local infra (TLS, routing) | `nginx:1.27-alpine` | healthy |
-| postgres | Local infra | `postgres:16-alpine` | healthy |
-| azurite | Local emulator (Blob/Queue/Table) | `azurite:3.35.0` | healthy |
-| rabbitmq | Local infra (MassTransit for Register/Access Management) | `rabbitmq:4.1-management-alpine` | healthy |
-| servicebus, sb-sqledge | Local emulator (Azure Service Bus for Storage/Events) | emulator `latest`, `mssql/server:2022-latest` | started / healthy |
-| lowkey-vault | Local emulator (Azure Key Vault API) | `nagyesta/lowkey-vault:7.3.98` | healthy |
-| otel-collector | Local infra | `otel-collector-contrib:0.128.0` | started |
+| Container                                                                           | Kind                                                                            | Image                                         | Health                               |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------ |
+| app                                                                                 | Real Altinn app (`ttd/frontend-test`, Altinn.App from this repo)                | `lrr/app-frontend-test:local`                 | healthy                              |
+| storage, events, authentication, authorization, accessmanagement, register, profile | Real Altinn platform services                                                   | `lrr/<name>:local`                            | healthy                              |
+| register-init, profile-init, accessmanagement-init                                  | Migration/seed jobs                                                             | same images                                   | exited 0                             |
+| workflow-engine                                                                     | Real Altinn runtime (process engine)                                            | `runtime-workflow-engine-app:a45a743b78`      | started (no health endpoint exposed) |
+| pdf3                                                                                | Real Altinn runtime (PDF worker, Chromium)                                      | `runtime-pdf3-worker:694406e93c`              | started                              |
+| mockporten                                                                          | External-system substitute (ID-porten + Maskinporten), from Authentication repo | `lrr/mockporten:local`                        | started                              |
+| subscriber                                                                          | Local Events webhook subscriber (test double for a downstream system)           | `python:3.12-alpine`                          | started                              |
+| gateway                                                                             | Local infra (TLS, routing)                                                      | `nginx:1.27-alpine`                           | healthy                              |
+| postgres                                                                            | Local infra                                                                     | `postgres:16-alpine`                          | healthy                              |
+| azurite                                                                             | Local emulator (Blob/Queue/Table)                                               | `azurite:3.35.0`                              | healthy                              |
+| rabbitmq                                                                            | Local infra (MassTransit for Register/Access Management)                        | `rabbitmq:4.1-management-alpine`              | healthy                              |
+| servicebus, sb-sqledge                                                              | Local emulator (Azure Service Bus for Storage/Events)                           | emulator `latest`, `mssql/server:2022-latest` | started / healthy                    |
+| lowkey-vault                                                                        | Local emulator (Azure Key Vault API)                                            | `nagyesta/lowkey-vault:7.3.98`                | healthy                              |
+| otel-collector                                                                      | Local infra                                                                     | `otel-collector-contrib:0.128.0`              | started                              |
 
 ## 10. External substitutes (explicit)
 
-| Real dependency | Substitute here | What stays real |
-|---|---|---|
-| ID-porten (OIDC) | MockPorten (`altinn-authentication/samples/mockporten`, fork PR #4 adds RFC 9207 `iss`) | Authorization-code + PKCE, nonce, signature, issuer & audience validation in Authentication |
-| Maskinporten (machine tokens) | MockPorten JWT-bearer grant with a registered synthetic client key | Signed RFC 7523 assertion, scope check, real `authentication/exchange/maskinporten` |
-| Azure Key Vault | Lowkey Vault (`keyvault.local.altinn.cloud:8443`) | Real Azure SDK clients, managed-identity challenge flow, cert lookup for access-token validation |
-| Azure Service Bus | Microsoft Service Bus emulator | Real Wolverine/ASB client code in Storage and Events |
-| Azure Blob/Queue/Table | Azurite | Real Azure Storage SDK clients |
-| FREG / Enhetsregisteret / Altinn 2 roles (Register upstream sources) | `infra/register/seed.sql` synthetic parties/roles written directly into Register's schema | Register API, Register→Access Management sync, PDP decisions |
-| Altinn 2 / SBL bridge (Storage `A2` endpoints) | disabled (`GeneralSettings__DisableA2Endpoints=true`) | — |
-| altinncdn.no org list | `infra/static/orgs/altinn-orgs.json` via gateway | — |
-| Downstream event consumer | `subscriber/subscriber.py` | Events subscription validation + webhook delivery workers |
-| Azure Monitor / App Insights | OTel collector → file | OTLP export from app and workflow engine |
+| Real dependency                                                      | Substitute here                                                                           | What stays real                                                                                  |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| ID-porten (OIDC)                                                     | MockPorten (`altinn-authentication/samples/mockporten`, fork PR #4 adds RFC 9207 `iss`)   | Authorization-code + PKCE, nonce, signature, issuer & audience validation in Authentication      |
+| Maskinporten (machine tokens)                                        | MockPorten JWT-bearer grant with a registered synthetic client key                        | Signed RFC 7523 assertion, scope check, real `authentication/exchange/maskinporten`              |
+| Azure Key Vault                                                      | Lowkey Vault (`keyvault.local.altinn.cloud:8443`)                                         | Real Azure SDK clients, managed-identity challenge flow, cert lookup for access-token validation |
+| Azure Service Bus                                                    | Microsoft Service Bus emulator                                                            | Real Wolverine/ASB client code in Storage and Events                                             |
+| Azure Blob/Queue/Table                                               | Azurite                                                                                   | Real Azure Storage SDK clients                                                                   |
+| FREG / Enhetsregisteret / Altinn 2 roles (Register upstream sources) | `infra/register/seed.sql` synthetic parties/roles written directly into Register's schema | Register API, Register→Access Management sync, PDP decisions                                     |
+| Altinn 2 / SBL bridge (Storage `A2` endpoints)                       | disabled (`GeneralSettings__DisableA2Endpoints=true`)                                     | —                                                                                                |
+| altinncdn.no org list                                                | `infra/static/orgs/altinn-orgs.json` via gateway                                          | —                                                                                                |
+| Downstream event consumer                                            | `subscriber/subscriber.py`                                                                | Events subscription validation + webhook delivery workers                                        |
+| Azure Monitor / App Insights                                         | OTel collector → file                                                                     | OTLP export from app and workflow engine                                                         |
 
 ## 11. Unresolved limitations
 
@@ -289,5 +288,5 @@ Per-suite counts: [`evidence/upstream-tests-20261013.md`](evidence/upstream-test
   HTTP/protobuf (4318) instead of gRPC.
 - **`app/publish` is a build artifact** (ignored); `scripts/build-app.sh` must be re-run after changing
   the app or `Altinn.App` libraries.
-- Platform access-token *private* keys are dev-only PFX files mounted from `certs/`; there is no
+- Platform access-token _private_ keys are dev-only PFX files mounted from `certs/`; there is no
   rotation.

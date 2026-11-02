@@ -68,7 +68,7 @@ jobs:
           persist-credentials: false
       - name: Read the pinned fork revisions (forks.lock)
         id: pins
-        run: awk '!/^#/ && NF == 2 { print $1 "=" $2 }' altinn-studio/local-reporting-runtime/forks.lock >> "$GITHUB_OUTPUT"
+        run: awk '!/^#/ && NF == 2 { print $1 "=" $2 }' local-reporting-runtime/forks.lock >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { repository: '${{ github.repository_owner }}/altinn-storage', ref: "${{ steps.pins.outputs['altinn-storage'] }}", path: altinn-storage, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -476,7 +476,40 @@ public class GitRepository
             );
         }
 
+        EnsureNoSymbolicLinkInPath(absoluteFilePath);
+
         return absoluteFilePath;
+    }
+
+    /// <summary>
+    /// Path.GetFullPath does not resolve symbolic links, so a link committed to the repository could
+    /// redirect file access outside of it. Reject the path if any existing segment below the
+    /// repository directory is a symbolic link or junction.
+    /// </summary>
+    private void EnsureNoSymbolicLinkInPath(string absoluteFilePath)
+    {
+        string relativePath = absoluteFilePath[(RepositoryDirectory.Length + 1)..];
+        string currentPath = RepositoryDirectory;
+
+        foreach (
+            string segment in relativePath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)
+        )
+        {
+            currentPath = Path.Combine(currentPath, segment);
+            var fileSystemInfo = new FileInfo(currentPath);
+
+            if (fileSystemInfo.LinkTarget is not null)
+            {
+                throw new ArgumentException(
+                    $"The path '{absoluteFilePath}' must not contain symbolic links within the repository directory '{RepositoryDirectory}'."
+                );
+            }
+
+            if (!fileSystemInfo.Exists && !Directory.Exists(currentPath))
+            {
+                return;
+            }
+        }
     }
 
     private static void CreateDirectory(string absoluteFilePath)

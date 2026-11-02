@@ -778,6 +778,11 @@ public class RepositoryController : ControllerBase
 
             foreach (var changedFile in changedFiles)
             {
+                if (!IsRegularFileInsideRoot(appRoot, changedFile))
+                {
+                    continue;
+                }
+
                 archive.CreateEntryFromFile(Path.Join(appRoot, changedFile), changedFile);
             }
         }
@@ -792,7 +797,7 @@ public class RepositoryController : ControllerBase
         var ret = new List<string>();
         foreach (var directory in currentDir.EnumerateDirectories())
         {
-            if (directory.Name == ".git")
+            if (directory.Name == ".git" || IsLink(directory))
             {
                 continue;
             }
@@ -802,9 +807,51 @@ public class RepositoryController : ControllerBase
 
         foreach (var file in currentDir.GetFiles())
         {
+            if (IsLink(file))
+            {
+                continue;
+            }
+
             ret.Add(file.FullName.Replace('\\', '/').Replace(appRoot, string.Empty));
         }
 
         return ret;
+    }
+
+    private static bool IsLink(FileSystemInfo fileSystemInfo)
+    {
+        return fileSystemInfo.LinkTarget is not null || fileSystemInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
+    }
+
+    private static bool IsRegularFileInsideRoot(string appRoot, string relativeFilePath)
+    {
+        string rootFullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(appRoot));
+        string fileFullPath = Path.GetFullPath(Path.Join(rootFullPath, relativeFilePath));
+
+        if (!fileFullPath.StartsWith(rootFullPath + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var file = new FileInfo(fileFullPath);
+        if (!file.Exists || IsLink(file))
+        {
+            return false;
+        }
+
+        for (DirectoryInfo directory = file.Directory; directory is not null; directory = directory.Parent)
+        {
+            if (string.Equals(directory.FullName, rootFullPath, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            if (IsLink(directory))
+            {
+                return false;
+            }
+        }
+
+        return false;
     }
 }

@@ -303,6 +303,7 @@ services:
     command: ["--run-db-migrations"]
     depends_on:
       postgres: { condition: service_healthy }
+      lowkey-vault: { condition: service_healthy }
     environment:
       <<: *dotnet-env
       ASPNETCORE_ENVIRONMENT: Production

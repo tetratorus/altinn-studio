@@ -1,0 +1,25 @@
+# Public HTTPS front door for the deploy server (docker-compose.deploy.yml). Let's Encrypt certificates for the
+# sslip.io names; a password prompt guards every host, and a site-wide cookie set after login keeps the other
+# subdomains (login redirects, API calls) from prompting again. Traffic is passed to the internal gateway.
+{$LRR_DOMAIN}, app.{$LRR_DOMAIN}, mockporten.{$LRR_DOMAIN} {
+	@locked not header_regexp Cookie lrr_gate={$LRR_GATE_COOKIE}
+	handle @locked {
+		basic_auth {
+			{$LRR_GATE_USER} {$LRR_GATE_HASH}
+		}
+		header +Set-Cookie "lrr_gate={$LRR_GATE_COOKIE}; Domain={$LRR_DOMAIN}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=2592000"
+		import gateway
+	}
+	handle {
+		import gateway
+	}
+}
+
+(gateway) {
+	reverse_proxy https://gateway {
+		transport http {
+			tls_insecure_skip_verify
+			tls_server_name {host}
+		}
+	}
+}

@@ -19,7 +19,7 @@ chmod 644 certs/*.p12 certs/*.pfx certs/*.key 2>/dev/null || true
 wait_for "lowkey-vault" 60 curl -sk -o /dev/null https://localhost:8443/ping
 PUBCERT_B64=$(openssl x509 -in certs/platform-access-token.crt -outform DER | base64 -w0)
 for issuer in platform ttd; do
-  curl -sSk -o /dev/null -X PUT "https://keyvault.local.altinn.cloud:8443/secrets/${issuer}-access-token-public-cert?api-version=7.4" \
+  curl -sSk -o /dev/null -X PUT "https://keyvault.$LRR_DOMAIN:8443/secrets/${issuer}-access-token-public-cert?api-version=7.4" \
     -H "Authorization: Bearer lowkey" -H "Content-Type: application/json" \
     -d "{\"value\":\"$PUBCERT_B64\",\"contentType\":\"application/x-x509-ca-cert\"}"
 done

@@ -10,7 +10,7 @@ existing=$(curl -sf --cacert "$CA_CERT" -H "Authorization: Bearer $T" "$GATEWAY_
 if [[ "$existing" != "0" ]]; then echo "subscription already registered"; exit 0; fi
 curl -sf --cacert "$CA_CERT" -X POST "$GATEWAY_URL/events/api/v1/subscriptions" -H "Authorization: Bearer $T" \
   -H "Content-Type: application/json" --data '{
-    "endPoint":"https://subscriber.local.altinn.cloud/webhook",
-    "sourceFilter":"https://app.local.altinn.cloud/ttd/frontend-test",
+    "endPoint":"https://subscriber.'"$LRR_DOMAIN"'/webhook",
+    "sourceFilter":"https://app.'"$LRR_DOMAIN"'/ttd/frontend-test",
     "resourceFilter":"urn:altinn:resource:app_ttd_frontend-test"}'
 echo

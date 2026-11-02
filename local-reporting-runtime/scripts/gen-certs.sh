@@ -33,18 +33,22 @@ else
     -addext "basicConstraints=critical,CA:TRUE" -addext "keyUsage=critical,keyCertSign,cRLSign"
 fi
 
-if [[ ! -f local.altinn.cloud.crt ]]; then
+# The file keeps its historical name; its names follow LRR_DOMAIN and it is reissued when that changes.
+DOMAIN="${LRR_DOMAIN:-local.altinn.cloud}"
+if [[ ! -f local.altinn.cloud.crt || "$(cat server.domain 2>/dev/null || echo local.altinn.cloud)" != "$DOMAIN" ]]; then
+  rm -f lowkey-vault.p12
   openssl req -newkey rsa:2048 -nodes -keyout local.altinn.cloud.key -out server.csr \
-    -subj "/CN=local.altinn.cloud"
+    -subj "/CN=$DOMAIN"
   cat > server.ext <<EOF
 basicConstraints=CA:FALSE
 keyUsage=digitalSignature,keyEncipherment
 extendedKeyUsage=serverAuth
-subjectAltName=DNS:local.altinn.cloud,DNS:*.local.altinn.cloud,DNS:localhost,IP:127.0.0.1
+subjectAltName=DNS:$DOMAIN,DNS:*.$DOMAIN,DNS:localhost,IP:127.0.0.1
 EOF
   openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 825 -sha256 \
     -out local.altinn.cloud.crt -extfile server.ext
   rm -f server.csr server.ext
+  echo "$DOMAIN" > server.domain
 fi
 
 gen_signing_pfx() {

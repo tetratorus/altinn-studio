@@ -1,12 +1,12 @@
 module altinn.studio/studioctl
 
-go 1.26.4
+go 1.26.9
 
 require (
 	altinn.studio/devenv v0.0.0
 	github.com/mattn/go-runewidth v0.0.27
-	golang.org/x/sys v0.47.0
-	golang.org/x/term v0.45.0
+	golang.org/x/sys v0.48.0
+	golang.org/x/term v0.46.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -41,7 +41,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
 )
 
 replace altinn.studio/devenv => ../Runtime/devenv

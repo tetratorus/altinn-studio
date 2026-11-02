@@ -66,18 +66,21 @@ jobs:
         with:
           path: altinn-studio
           persist-credentials: false
+      - name: Read the pinned fork revisions (forks.lock)
+        id: pins
+        run: awk '!/^#/ && NF == 2 { print $1 "=" $2 }' altinn-studio/local-reporting-runtime/forks.lock >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { repository: '${{ github.repository_owner }}/altinn-storage', path: altinn-storage, persist-credentials: false }
+        with: { repository: '${{ github.repository_owner }}/altinn-storage', ref: "${{ steps.pins.outputs['altinn-storage'] }}", path: altinn-storage, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { repository: '${{ github.repository_owner }}/altinn-events', path: altinn-events, persist-credentials: false }
+        with: { repository: '${{ github.repository_owner }}/altinn-events', ref: "${{ steps.pins.outputs['altinn-events'] }}", path: altinn-events, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { repository: '${{ github.repository_owner }}/altinn-authentication', path: altinn-authentication, persist-credentials: false }
+        with: { repository: '${{ github.repository_owner }}/altinn-authentication', ref: "${{ steps.pins.outputs['altinn-authentication'] }}", path: altinn-authentication, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { repository: '${{ github.repository_owner }}/altinn-register', path: altinn-register, persist-credentials: false }
+        with: { repository: '${{ github.repository_owner }}/altinn-register', ref: "${{ steps.pins.outputs['altinn-register'] }}", path: altinn-register, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { repository: '${{ github.repository_owner }}/altinn-profile', path: altinn-profile, persist-credentials: false }
+        with: { repository: '${{ github.repository_owner }}/altinn-profile', ref: "${{ steps.pins.outputs['altinn-profile'] }}", path: altinn-profile, persist-credentials: false }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { repository: '${{ github.repository_owner }}/altinn-auth', path: altinn-auth, persist-credentials: false }
+        with: { repository: '${{ github.repository_owner }}/altinn-auth', ref: "${{ steps.pins.outputs['altinn-auth'] }}", path: altinn-auth, persist-credentials: false }
 
       - name: Setup .NET
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0

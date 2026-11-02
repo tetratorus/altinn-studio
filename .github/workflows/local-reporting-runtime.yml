@@ -115,6 +115,12 @@ jobs:
         working-directory: altinn-studio/local-reporting-runtime
         run: ./scripts/acceptance.sh
 
+      - name: Resource usage
+        if: always()
+        run: |
+          free -m
+          docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}'
+
       - name: Service logs on failure
         if: failure()
         working-directory: altinn-studio/local-reporting-runtime
@@ -198,6 +204,7 @@ jobs:
       - name: Deploy
         if: steps.target.outputs.ok
         run: |
+          # shellcheck disable=SC2029 # values are intentionally expanded on the runner
           ssh target "GHCR_USER='${{ github.actor }}' GHCR_TOKEN='${{ secrets.GITHUB_TOKEN }}' IMAGE_PREFIX='$IMAGE_PREFIX' \
             IMAGE_TAG='${{ github.sha }}' SERVICES='$SERVICES' bash altinn/altinn-studio/local-reporting-runtime/scripts/deploy-remote.sh"
 

@@ -10,7 +10,7 @@ COPY Runtime/common/dotnet/Altinn.Studio.Runtime.Common/HostBridge/ /src/Runtime
 COPY Runtime/common/dotnet/Altinn.Studio.Runtime.Common/EnvTopology/ /src/Runtime/common/dotnet/Altinn.Studio.Runtime.Common/EnvTopology/
 RUN dotnet publish LocalTest.csproj -c Release -o /app_output
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.10-alpine3.23@sha256:27b6b84beeede74fd16886177d360799c8e4299ceadfbd64eef57bafead7878a AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-alpine3.24@sha256:ecf8dcbaab8ebc4bdfb2322d6fe4217bbb118894310ebb6d53c580874ab4b27d AS final
 ENV ASPNETCORE_URLS=http://*:5101/
 EXPOSE 5101
 # Create the storage folder if it isn't mapped to a volume runtime

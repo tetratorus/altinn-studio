@@ -1,5 +1,6 @@
-# Server overrides used by scripts/deploy-remote.sh: keep the gateway on loopback so the stack is only
-# reachable through an SSH tunnel (several platform services have no license grant for public hosting).
+# Server overrides used by scripts/deploy-remote.sh: keep the gateway off public interfaces so the stack is
+# only reachable through an SSH tunnel (several platform services have no license grant for public hosting).
+# Containers reach local.altinn.cloud via host-gateway (the docker0 address), so the gateway listens there too.
 services:
   gateway:
-    ports: !override ["127.0.0.1:80:80", "127.0.0.1:443:443"]
+    ports: !override ["127.0.0.1:80:80", "127.0.0.1:443:443", "172.17.0.1:80:80", "172.17.0.1:443:443"]

@@ -5,6 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 mkdir -p data/postgres data/azurite data/rabbitmq data/mssql data/lowkey-vault data/subscriber data/app-keys logs/otel logs/app
 chmod 777 data/mssql data/lowkey-vault data/subscriber data/app-keys logs/otel logs/app   # written by non-root containers
 ./scripts/gen-certs.sh
+sed -E "/ssl_certificate/! s/local\.altinn\.cloud/$LRR_DOMAIN/g" gateway/nginx.conf > data/gateway-nginx.conf
 load_maskinporten_client   # certs may have just been generated on a fresh checkout
 [[ -f certs/lowkey-vault.p12 ]] || openssl pkcs12 -export -inkey certs/local.altinn.cloud.key \
   -in certs/local.altinn.cloud.crt -out certs/lowkey-vault.p12 -passout "pass:$LRR_PFX_PASSWORD" -name lowkey

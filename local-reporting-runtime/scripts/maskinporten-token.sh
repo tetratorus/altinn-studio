@@ -5,7 +5,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 SCOPES="${1:-altinn:serviceowner/instances.read altinn:serviceowner/instances.write}"
-AUTHORITY="https://mockporten.local.altinn.cloud/"
+AUTHORITY="https://mockporten.$LRR_DOMAIN/"
 KEY="certs/maskinporten-client.key"
 
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }

@@ -4,8 +4,8 @@
 # Events asks real Authorization (XACML "read" on the app resource) before accepting the subscription,
 # then its validation worker POSTs platform.events.validatesubscription to the endpoint.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
-ENDPOINT="https://subscriber.local.altinn.cloud/webhook"
-SOURCE_FILTER="https://app.local.altinn.cloud/ttd/frontend-test"
+ENDPOINT="https://subscriber.$LRR_DOMAIN/webhook"
+SOURCE_FILTER="https://app.$LRR_DOMAIN/ttd/frontend-test"
 RESOURCE_FILTER="urn:altinn:resource:app_ttd_frontend-test"
 T=$(scripts/maskinporten-token.sh "altinn:serviceowner/instances.read altinn:events.subscribe")
 # Skip only when this exact subscription exists; any other subscription for ttd must not suppress it.

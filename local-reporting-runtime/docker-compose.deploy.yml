@@ -1,5 +1,22 @@
-# Server overrides used by scripts/deploy-remote.sh: keep the gateway on loopback so the stack is only
-# reachable through an SSH tunnel (several platform services have no license grant for public hosting).
+# Server overrides used by scripts/deploy-remote.sh. The internal gateway stays off public interfaces; containers
+# reach it via host-gateway (the docker0 address), so it listens there too. The public entry point is Caddy on
+# the server's public IP: real HTTPS for the sslip.io names, behind a password prompt (several platform
+# services have no license grant for open public hosting).
 services:
   gateway:
-    ports: !override ["127.0.0.1:80:80", "127.0.0.1:443:443"]
+    ports: !override ["127.0.0.1:80:80", "127.0.0.1:443:443", "172.17.0.1:80:80", "172.17.0.1:443:443"]
+
+  caddy:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    networks: [lrr]
+    depends_on: [gateway]
+    ports: ["${LRR_PUBLIC_IP:?set by deploy-remote.sh}:80:80", "${LRR_PUBLIC_IP}:443:443"]
+    environment:
+      LRR_DOMAIN: ${LRR_DOMAIN}
+      LRR_GATE_USER: ${LRR_GATE_USER:-altinn}
+      LRR_GATE_HASH: ${LRR_GATE_HASH:?set by deploy-remote.sh}
+      LRR_GATE_COOKIE: ${LRR_GATE_COOKIE:?set by deploy-remote.sh}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy:/data

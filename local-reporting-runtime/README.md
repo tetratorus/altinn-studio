@@ -306,9 +306,11 @@ only) and then `acceptance.sh`. `./data` on the server persists across deploys.
 
 Repository secrets (deploy is skipped while unset): `DEPLOY_HOST` (server IP/hostname), `DEPLOY_USER`
 (root, or a user with sudo), `DEPLOY_SSH_KEY` (private key whose public half is in that user's
-`authorized_keys`). Server: Ubuntu 22.04/24.04, about 4 vCPU, 16 GB RAM, 60 GB disk, SSH reachable from
-GitHub runners.
+`authorized_keys`). Server: Ubuntu 22.04/24.04, SSH reachable from GitHub runners. The running stack
+uses about 3.8 GB of container memory after acceptance (SQL Edge ~0.9 GB, Events ~0.6 GB), so 2 vCPU /
+4 GB RAM plus a 6 GB swap file is the smallest size that works; images are built in CI, not on the server.
 
-Open the deployed stack through a tunnel: `sudo ssh -L 443:127.0.0.1:443 <user>@<host>`, add the
-hostnames from section 4 to your local `/etc/hosts`, trust the server's `certs/ca.crt`, then browse
-https://app.local.altinn.cloud/ttd/frontend-test/.
+Open the deployed stack at `https://app.<server-ip-with-dashes>.sslip.io/ttd/frontend-test/` (sslip.io
+resolves that name to the server, no DNS signup). Caddy serves it with a Let's Encrypt certificate behind a
+password prompt; the user and password are `LRR_GATE_USER` / `LRR_GATE_PASSWORD` in the server's
+`local-reporting-runtime/.env`. Set `LRR_DOMAIN` there to use your own domain instead.

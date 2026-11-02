@@ -48,6 +48,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     outputs:
       publish: ${{ steps.publish.outputs.done }}
     defaults:
@@ -108,6 +109,7 @@ jobs:
           sudo sysctl -w fs.inotify.max_user_instances=1024
 
       - name: Build images and start the stack
+        id: stack
         working-directory: altinn-studio/local-reporting-runtime
         run: LRR_BUILD=1 ./scripts/up.sh
 
@@ -137,6 +139,29 @@ jobs:
           path: altinn-studio/local-reporting-runtime/evidence/
           if-no-files-found: ignore
 
+      - name: Security scan of the built images (Trivy, merges to main only)
+        if: always() && steps.stack.outcome == 'success' && github.event_name == 'push'
+        run: |
+          mkdir -p ../trivy
+          echo "| image | critical | high |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+          for s in $SERVICES; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/../trivy:/out" -v trivy-cache:/root/.cache \
+              aquasec/trivy:0.76.1 image -q --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+              --format sarif -o "/out/$s.raw.sarif" "lrr/$s:local"
+            jq --arg id "trivy/$s/" '.runs[].automationDetails.id = $id' "../trivy/$s.raw.sarif" > "../trivy/$s.sarif"
+            rm "../trivy/$s.raw.sarif"
+            c=$(jq '[.runs[].results[] | select(.level == "error")] | length' "../trivy/$s.sarif")
+            h=$(jq '[.runs[].results[] | select(.level == "warning")] | length' "../trivy/$s.sarif")
+            echo "| $s | $c | $h |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Upload scan results to the Security tab
+        if: always() && steps.stack.outcome == 'success' && github.event_name == 'push'
+        uses: github/codeql-action/upload-sarif@c4dd10e44af883a891fe31ced449bcb4a6728b9b # v3.37.6
+        with:
+          sarif_file: trivy
+
       - name: Publish images to GHCR
         id: publish
         if: github.event_name == 'push' || github.event_name == 'schedule' || inputs.deploy
@@ -145,7 +170,8 @@ jobs:
           for s in $SERVICES; do
             for t in "${{ github.sha }}" latest; do
               docker tag "lrr/$s:local" "$IMAGE_PREFIX-$s:$t"
-              docker push -q "$IMAGE_PREFIX-$s:$t"
+              # GHCR can deny the first push of a brand-new package while it links it to the repo; retry.
+              for i in 1 2 3 4; do docker push -q "$IMAGE_PREFIX-$s:$t" && break; [[ $i == 4 ]] && exit 1; sleep $((i * 10)); done
             done
           done
           echo "done=true" >> "$GITHUB_OUTPUT"

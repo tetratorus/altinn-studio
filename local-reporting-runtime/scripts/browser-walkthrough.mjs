@@ -12,7 +12,7 @@ import path from 'node:path';
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.resolve(import.meta.dirname, '../../node_modules/playwright'));
 
-const APP_URL = 'https://app.local.altinn.cloud/ttd/frontend-test/';
+const APP_URL = `https://app.${process.env.LRR_DOMAIN || 'local.altinn.cloud'}/ttd/frontend-test/`;
 const PID = process.env.LRR_PID ?? '02856221086';
 const UNAUTHORIZED_PID = process.env.LRR_UNAUTHORIZED_PID ?? '15877749964';
 // Read .env the way scripts/lib.sh does (bash `source`), so quoting and comments behave the same.

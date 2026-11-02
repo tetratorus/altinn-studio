@@ -1,6 +1,6 @@
 FROM docker.io/gitea/runner:3.3.1@sha256:c8570d703deb1bbe53c7e203092cfc5a310ca074559dc7fe2e7ebe11dd066577 AS gitea-basic
 
-FROM ghcr.io/renovatebot/renovate:42.34.1@sha256:76265a40295d41facff1967a60e893fbce7de39e4975bc2b63884a8482170e39 AS renovate
+FROM ghcr.io/renovatebot/renovate:44.199.2@sha256:0538f498be1b074e2434f8449cab7b2be30f8c0d0baf3b72814010f19db5bcfb AS renovate
 
 FROM docker.io/gitea/runner-images:ubuntu-latest@sha256:e77e2b1ebba51adb1c59d8eb185bc54e397b7e22442756aa7ea0e7b841fd2906 AS final
 

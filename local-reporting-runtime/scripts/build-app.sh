@@ -8,9 +8,8 @@ dotnet publish "$LRR_DIR/../src/test/apps/frontend-test/App/App.csproj" -c Relea
 # Real apps get the frontend bundle as static web assets from the Altinn.App.Api NuGet package
 # (build/Altinn.App.Api.targets -> /{org}/{app}/altinn-app-frontend/). The sample app uses
 # project references instead, so copy the built bundle into wwwroot ourselves.
+# Always rebuild: a leftover dist/ from an older checkout would otherwise be served silently.
 FE_DIST="$LRR_DIR/../src/App/frontend/dist"
-if [[ ! -f "$FE_DIST/altinn-app-frontend.js" ]]; then
-  (cd "$LRR_DIR/../src/App/frontend" && yarn build)
-fi
+(cd "$LRR_DIR/../src/App/frontend" && yarn build)
 mkdir -p app/publish/wwwroot/altinn-app-frontend
 cp -r "$FE_DIST"/. app/publish/wwwroot/altinn-app-frontend/

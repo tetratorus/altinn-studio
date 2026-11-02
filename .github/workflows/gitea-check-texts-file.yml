@@ -48,10 +48,6 @@ jobs:
 
           texts_file_us_release=${{ env.temp-dir }}/gitea-src-${{ steps.get-gitea-version.outputs.gitea-version }}/options/locale/locale_en-US.json
 
-          echo "DEBUGSTART"
-          jq -c --slurpfile repo "${{ env.texts-file-no }}" '[to_entries[]] as $e | range(0; $e|length) as $i | select($repo[0]|has($e[$i].key)|not) | {prev: (if $i>0 then $e[$i-1].key else null end), key: $e[$i].key, value: $e[$i].value}' "$texts_file_us_release"
-          echo "DEBUGEND"
-
           repo_keys_file="${{ env.temp-dir }}/repo"
           release_keys_file="${{ env.temp-dir }}/release"
 

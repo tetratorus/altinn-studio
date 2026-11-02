@@ -21,15 +21,15 @@ $SUDO sysctl -qw fs.inotify.max_user_instances=1024
 
 # Re-exec with the docker group active if the user was just added to it.
 if ! docker info >/dev/null 2>&1 && [[ -z "${LRR_SG:-}" ]]; then
-  exec sg docker -c "LRR_SG=1 GHCR_USER='$GHCR_USER' GHCR_TOKEN='$GHCR_TOKEN' IMAGE_PREFIX='$IMAGE_PREFIX' IMAGE_TAG='$IMAGE_TAG' SERVICES='$SERVICES' bash '$0'"
+  exec sg docker -c "LRR_SG=1 GHCR_USER='${GHCR_USER:-}' GHCR_TOKEN='${GHCR_TOKEN:-}' IMAGE_PREFIX='$IMAGE_PREFIX' IMAGE_TAG='$IMAGE_TAG' SERVICES='$SERVICES' bash '$0'"
 fi
 
-echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
+[[ -n "${GHCR_TOKEN:-}" ]] && echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
 for s in $SERVICES; do
   docker pull -q "$IMAGE_PREFIX-$s:$IMAGE_TAG"
   docker tag "$IMAGE_PREFIX-$s:$IMAGE_TAG" "lrr/$s:local"
 done
-docker logout ghcr.io >/dev/null
+[[ -n "${GHCR_TOKEN:-}" ]] && docker logout ghcr.io >/dev/null
 
 cd "$LRR_DIR"
 export COMPOSE_FILE=docker-compose.yml:docker-compose.deploy.yml

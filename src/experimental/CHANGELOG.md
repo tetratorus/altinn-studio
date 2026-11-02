@@ -12,6 +12,10 @@ Agent images they work with. The Rust workspace version is a build detail and is
 
 ## [Unreleased]
 
+### Security
+
+- The Agent images now ship Go 1.26.9, which fixes an HTTP/2 flow control vulnerability (CVE-2026-78663).
+
 ## [0.1.0-preview.2] - 2026-09-15
 
 ### Added

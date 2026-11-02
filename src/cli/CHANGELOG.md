@@ -22,6 +22,10 @@ Section ordering: Added, Changed, Fixed, Removed, Security, Deprecated.
 
 - `studioctl app upgrade v9` preserves your C# files' indentation and line endings when simplifying generated type names.
 
+### Security
+
+- studioctl is now built with Go 1.26.9 and `golang.org/x/net` v0.60.0, fixing an HTTP/2 flow control vulnerability (CVE-2026-78663) in its local servers.
+
 ## [0.1.0-preview.25] - 2026-09-14
 
 ### Added

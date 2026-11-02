@@ -10,8 +10,8 @@ if ! command -v docker >/dev/null; then
   curl -fsSL https://get.docker.com | $SUDO sh
   [[ $EUID -ne 0 ]] && $SUDO usermod -aG docker "$USER"
 fi
-if ! command -v python3 >/dev/null || ! command -v openssl >/dev/null; then
-  $SUDO apt-get update -q && $SUDO apt-get install -yq python3 openssl curl
+if ! command -v python3 >/dev/null || ! command -v openssl >/dev/null || ! command -v setfacl >/dev/null; then
+  $SUDO apt-get update -q && $SUDO apt-get install -yq python3 openssl curl acl
 fi
 # Public name: <ip-with-dashes>.sslip.io resolves to this server with no DNS signup. Override with LRR_DOMAIN in .env.
 LRR_PUBLIC_IP="$(curl -fsS4 --max-time 10 https://api.ipify.org || hostname -I | awk '{print $1}')"

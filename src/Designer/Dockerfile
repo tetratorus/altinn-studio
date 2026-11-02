@@ -88,7 +88,7 @@ WORKDIR /app-template-dotnet-src/v9
 RUN rsync . -rv --exclude-from=.releaseignore --exclude-from=.gitignore /app-template-release/v9/src
 
 # Building the final image
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine@sha256:27b6b84beeede74fd16886177d360799c8e4299ceadfbd64eef57bafead7878a AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine@sha256:254fe017495996d3abcc487ffacdcce2b73affb380d3af87af12c8dff41fe0b0 AS final
 EXPOSE 80
 WORKDIR /app
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \

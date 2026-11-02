@@ -1,6 +1,6 @@
 module altinn.studio/studioctl
 
-go 1.26.4
+go 1.26.9
 
 require (
 	altinn.studio/devenv v0.0.0

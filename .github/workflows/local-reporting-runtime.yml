@@ -145,7 +145,8 @@ jobs:
           for s in $SERVICES; do
             for t in "${{ github.sha }}" latest; do
               docker tag "lrr/$s:local" "$IMAGE_PREFIX-$s:$t"
-              docker push -q "$IMAGE_PREFIX-$s:$t"
+              # GHCR can deny the first push of a brand-new package while it links it to the repo; retry.
+              for i in 1 2 3 4; do docker push -q "$IMAGE_PREFIX-$s:$t" && break; [[ $i == 4 ]] && exit 1; sleep $((i * 10)); done
             done
           done
           echo "done=true" >> "$GITHUB_OUTPUT"

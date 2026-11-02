@@ -3,6 +3,7 @@
 # subdomains (login redirects, API calls) from prompting again. Traffic is passed to the internal gateway.
 (gateway) {
 	reverse_proxy https://gateway {
+		header_up Host {host}
 		transport http {
 			tls_insecure_skip_verify
 			tls_server_name {host}

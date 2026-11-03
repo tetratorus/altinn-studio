@@ -634,7 +634,10 @@ async fn client_and_server_exchange_versioned_agent_operations() {
     assert_eq!(fixture.progress_ensures.get(), 0);
     assert_eq!(execution.operating_system, "linux");
     assert_eq!(execution.sandbox.provider().as_str(), "memory");
-    assert!(client.list_sessions(None).await.expect("list all Sessions").is_empty());
+    assert_eq!(
+        client.list_sessions(None).await.expect("list all Sessions"),
+        [] as [agent::sessions::Session; 0]
+    );
     let ensure_error = client
         .ensure_session(
             "worker",

@@ -12,6 +12,10 @@ Agent images they work with. The Rust workspace version is a build detail and is
 
 ## [Unreleased]
 
+### Security
+
+- The Agent images ship .NET SDK 10.0.403 with runtime 10.0.14, which fixes four security vulnerabilities in earlier .NET 10 releases. ([#50](https://github.com/tetratorus/altinn-studio/pull/50))
+
 ## [0.1.0-preview.2] - 2026-09-15
 
 ### Added

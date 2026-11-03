@@ -1,0 +1,6 @@
+# Upstream test suites 20261103T085547Z
+
+| Suite                       | Repository @ commit        | Command                                                                                                                                                                                                            | Total | Passed | Failed | Skipped | Exit |
+| --------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | ------ | ------ | ------- | ---- |
+| authorization (unit)        | `altinn-auth` @ `b57bd5f2` | `dotnet test -c Release -- --results-directory logs/upstream-tests/20261103T085547Z/authorization/unit --report-xunit-trx --filter-trait Category=Unit --ignore-exit-code 8`                                       | 302   | 302    | 0      | 0       | 0    |
+| authorization (integration) | `altinn-auth` @ `b57bd5f2` | `dotnet test -c Release -p:TestLane=Integration -- --results-directory logs/upstream-tests/20261103T085547Z/authorization/integration --report-xunit-trx --filter-trait Category=Integration --ignore-exit-code 8` | 157   | 157    | 0      | 0       | 0    |

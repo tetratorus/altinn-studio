@@ -1,26 +1,26 @@
 # Dependency and compatibility inventory
 
 Milestone 1 deliverable for the local Altinn reporting runtime (architecture evaluation of an
-IRAS-like reporting system). This document records *what was found*, not what will be built.
+IRAS-like reporting system). This document records _what was found_, not what will be built.
 Decisions and unresolved items are listed at the end.
 
 Inventory date: 2026-09-15. Machine: Ubuntu 22.04.5 LTS, x86_64, 8 vCPU, 31 GiB RAM, ~108 GiB free.
 
 ## 1. Repository and revision manifest
 
-| Component | Repository (checkout) | Commit | Branch / date | License in repo | GitHub license metadata |
-| --- | --- | --- | --- | --- | --- |
-| Studio / app runtime / CLI / Localtest / sample apps | `tetratorus/altinn-studio` | `a980e813d07d5136df8a032168535d938b40e73c` | `main`, 2026-10-13 | `LICENSE` — MIT (Digdir 2017) | MIT |
-| Storage | `tetratorus/altinn-storage` | `daa7654a72ef89a0be0c51587dacdfe2f4e1ccdd` | `main`, 2026-09-15 | **none** | **none** |
-| Events | `tetratorus/altinn-events` | `fcc0a70a06eb594968a52fedee8ef37052e61d16` | `main`, 2026-09-15 | `LICENSE.md` — MIT (Altinn 2022) | MIT |
-| Authentication | `tetratorus/altinn-authentication` | `938bc1382efe156940623f81077dd7fccfe9d4a4` | `main`, 2026-09-16 | **none** | **none** |
-| Authorization + Access Management | `tetratorus/altinn-auth` | `f33afeffab2bb6172cba375d8bd7b4808183e16c` | `main`, 2026-09-25 | `LICENSE` — MIT (Altinn 2024) | MIT |
-| Register | `tetratorus/altinn-register` | `1bdb4789d7a8abd726abe6bf92ef7da9fd4cbb55` | `main`, 2026-09-09 | **no LICENSE file**; `Directory.Build.props` sets `PackageLicenseExpression=MIT` for published NuGet packages only | **none** |
-| Profile | `tetratorus/altinn-profile` (forked during inventory; identical to upstream head) | `156d8c10b280f02b6b71ca28492ee4587cef8d71` | `main`, 2026-09-10 | **none** | **none** |
+| Component                                            | Repository (checkout)                                                             | Commit                                     | Branch / date                                 | License in repo                                                                                                    | GitHub license metadata |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| Studio / app runtime / CLI / Localtest / sample apps | `tetratorus/altinn-studio`                                                        | `a980e813d07d5136df8a032168535d938b40e73c` | `main`, 2026-10-13                            | `LICENSE` — MIT (Digdir 2017)                                                                                      | MIT                     |
+| Storage                                              | `tetratorus/altinn-storage`                                                       | `2112d3223d35528600d36b87fd5fb29e7373b6f8` | `devin/1793694161-dotnet-10.0.14`, 2026-11-03 | **none**                                                                                                           | **none**                |
+| Events                                               | `tetratorus/altinn-events`                                                        | `0bdc6a6a3159f2af622411abd94e362ce3c42ac7` | `devin/1793694161-dotnet-10.0.14`, 2026-11-03 | `LICENSE.md` — MIT (Altinn 2022)                                                                                   | MIT                     |
+| Authentication                                       | `tetratorus/altinn-authentication`                                                | `8427c49bf2eb35a2e14fa60de776e883cde1d39f` | `devin/1793694161-dotnet-10.0.14`, 2026-11-03 | **none**                                                                                                           | **none**                |
+| Authorization + Access Management                    | `tetratorus/altinn-auth`                                                          | `b57bd5f2924872122a70f0d6855116e30803f8d5` | `devin/1793694161-dotnet-10.0.14`, 2026-11-03 | `LICENSE` — MIT (Altinn 2024)                                                                                      | MIT                     |
+| Register                                             | `tetratorus/altinn-register`                                                      | `ce6bb786718461d668c795b08c4e79f8709a19ae` | `devin/1793694161-dotnet-10.0.14`, 2026-11-03 | **no LICENSE file**; `Directory.Build.props` sets `PackageLicenseExpression=MIT` for published NuGet packages only | **none**                |
+| Profile                                              | `tetratorus/altinn-profile` (forked during inventory; identical to upstream head) | `a65d6b7e3cf3c7e995320c1c50a3b24b8e3f8828` | `devin/1793694161-dotnet-10.0.14`, 2026-11-03 | **none**                                                                                                           | **none**                |
 
 All revisions are the current `main` heads of each fork; no cross-repo release tags pin them
 together (Altinn deploys each service independently from `main`). Compatibility is therefore
-established by shared *contract packages* (section 3), not by matching tags.
+established by shared _contract packages_ (section 3), not by matching tags.
 
 ### Licensing verification (per repository, not inherited)
 
@@ -38,46 +38,45 @@ established by shared *contract packages* (section 3), not by matching tags.
 `tetratorus/altinn-profile` did not exist at the start of the inventory; the user created the fork
 during the inventory and the local checkout now tracks it (same commit as upstream `main`).
 No other first-party repository from the required list is missing; see section 9 for first-party
-services that are *referenced* but not in the list.
+services that are _referenced_ but not in the list.
 
 ## 2. Toolchain and container runtime
 
-| Tool | Required by | Pinned / documented | Installed |
-| --- | --- | --- | --- |
-| .NET SDK | all services | `altinn-studio/src/App/backend/global.json` 10.0.203 (latestFeature); `src/Runtime/localtest/global.json` 10.0.302; `altinn-auth/global.json` 10.0.107 (latestMajor); `altinn-register/global.json` 10.0.203 + Aspire AppHost SDK 13.4.6; Storage/Events/Authentication/Profile: no `global.json`, Dockerfiles use `sdk:10.0` | 10.0.401 (`~/.dotnet`) — satisfies all pins via roll-forward |
-| Go | `studioctl` (`src/cli/go.mod`: `go 1.26.4`) | 1.26.4 | 1.26.4 (`~/go-sdk/go`) |
-| Node.js / Yarn | `src/App/frontend` (dev server), Studio repo scripts (`yarn docs:validate`, spellcheck) | Node LTS per `README.md` | Node 24.21.0, Yarn 4.18.0 (corepack) |
-| Docker Engine + Compose | all infra + service containers | — | Engine 29.7.2, Compose v5.4.0, daemon reachable |
-| Azure Functions Core Tools | `altinn-events/src/Events.Functions` (README) | v4 | not installed — alternative: run Functions host container `mcr.microsoft.com/azure-functions/dotnet-isolated` |
-| Register README | says ".NET 8" | **stale**: `global.json` pins 10.0.203 — treat `global.json` as authoritative |
+| Tool                       | Required by                                                                             | Pinned / documented                                                                                                                                                                                                                                                          | Installed                                                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| .NET SDK                   | all services                                                                            | `altinn-studio` .NET `global.json` files 10.0.403 (latestFeature); `altinn-auth/global.json` 10.0.114 (latestMajor); `altinn-register/global.json` 10.0.403 + Aspire AppHost SDK 13.4.6; Storage/Events/Authentication/Profile: no `global.json`, Dockerfiles use `sdk:10.0` | 10.0.403 (`~/.dotnet`), runtime 10.0.14 — satisfies all pins via roll-forward                                 |
+| Go                         | `studioctl` (`src/cli/go.mod`: `go 1.26.4`)                                             | 1.26.4                                                                                                                                                                                                                                                                       | 1.26.4 (`~/go-sdk/go`)                                                                                        |
+| Node.js / Yarn             | `src/App/frontend` (dev server), Studio repo scripts (`yarn docs:validate`, spellcheck) | Node LTS per `README.md`                                                                                                                                                                                                                                                     | Node 24.21.0, Yarn 4.18.0 (corepack)                                                                          |
+| Docker Engine + Compose    | all infra + service containers                                                          | —                                                                                                                                                                                                                                                                            | Engine 29.7.2, Compose v5.4.0, daemon reachable                                                               |
+| Azure Functions Core Tools | `altinn-events/src/Events.Functions` (README)                                           | v4                                                                                                                                                                                                                                                                           | not installed — alternative: run Functions host container `mcr.microsoft.com/azure-functions/dotnet-isolated` |
+| Register README            | says ".NET 8"                                                                           | **stale**: `global.json` pins 10.0.403 — treat `global.json` as authoritative                                                                                                                                                                                                |
 
 ### Container images referenced by the repositories
 
-| Image | Used by |
-| --- | --- |
-| `mcr.microsoft.com/dotnet/sdk:10.0-alpine3.24` / `aspnet:10.0-alpine3.24` | Storage Dockerfile |
-| `mcr.microsoft.com/dotnet/sdk:10.0.401-alpine3.23` / `aspnet:10.0.12-alpine3.23` | Events Dockerfile |
-| `mcr.microsoft.com/dotnet/sdk:10.0-alpine` / `aspnet:10.0-alpine` | Authentication, Register Dockerfiles |
-| `mcr.microsoft.com/dotnet/sdk:10.0-alpine@sha256:d8ee3981…` / `aspnet:10.0-alpine@sha256:27b6b84b…` | Authorization, Access Management Dockerfiles |
-| `mcr.microsoft.com/dotnet/sdk:10.0.301-alpine3.23` / `aspnet:10.0.12-alpine3.23` | Profile Dockerfile |
-| `postgres:16` (Storage compose), Postgres via Aspire (Register), `postgres` (auth compose) | databases |
-| `mcr.microsoft.com/azure-storage/azurite` | Storage, Events, Authentication, Auth, Profile |
-| `mcr.microsoft.com/azure-messaging/servicebus-emulator:latest` + `mcr.microsoft.com/mssql/server:2022-latest` | Events (Wolverine transport) — Storage also uses Wolverine/ASB |
-| `valkey/valkey` | Auth compose (Access Management cache) |
-| `rabbitmq` (management plugin) | Register (MassTransit bus) |
-| `dpage/pgadmin4` | Storage/Auth compose (optional) |
-| `ghcr.io/altinn/localtest`, `ghcr.io/altinn/pdf3`, workflow-engine image (or built locally with `STUDIOCTL_INTERNAL_DEV=true`) | Studio `studioctl env up` |
+| Image                                                                                                                          | Used by                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| `mcr.microsoft.com/dotnet/sdk:10.0-alpine3.24` / `aspnet:10.0-alpine3.24`                                                      | Storage Dockerfile                                             |
+| `mcr.microsoft.com/dotnet/sdk:10.0.403-alpine3.24` / `aspnet:10.0.14-alpine3.24`                                               | Events, Profile Dockerfiles                                    |
+| `mcr.microsoft.com/dotnet/sdk:10.0-alpine` / `aspnet:10.0-alpine`                                                              | Authentication, Register, MockPorten Dockerfiles               |
+| `mcr.microsoft.com/dotnet/sdk:10.0-alpine@sha256:d8ee3981…` / `aspnet:10.0-alpine@sha256:27b6b84b…`                            | Authorization, Access Management Dockerfiles                   |
+| `postgres:16` (Storage compose), Postgres via Aspire (Register), `postgres` (auth compose)                                     | databases                                                      |
+| `mcr.microsoft.com/azure-storage/azurite`                                                                                      | Storage, Events, Authentication, Auth, Profile                 |
+| `mcr.microsoft.com/azure-messaging/servicebus-emulator:latest` + `mcr.microsoft.com/mssql/server:2022-latest`                  | Events (Wolverine transport) — Storage also uses Wolverine/ASB |
+| `valkey/valkey`                                                                                                                | Auth compose (Access Management cache)                         |
+| `rabbitmq` (management plugin)                                                                                                 | Register (MassTransit bus)                                     |
+| `dpage/pgadmin4`                                                                                                               | Storage/Auth compose (optional)                                |
+| `ghcr.io/altinn/localtest`, `ghcr.io/altinn/pdf3`, workflow-engine image (or built locally with `STUDIOCTL_INTERNAL_DEV=true`) | Studio `studioctl env up`                                      |
 
 ## 3. Shared contract packages (compatibility check)
 
-| Package | Storage | Events | Authentication | Auth (Authz/AM) | Register | Profile | App runtime (`Altinn.App.*`) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `Altinn.Common.PEP` | 4.2.3 | 4.2.3 | — | — | — | 4.2.2/4.2.3 | 4.2.3 |
-| `Altinn.Common.AccessToken` | 5.1.12 | 5.1.9 | 5.1.11/5.1.12 | 5.1.11 | — | 5.1.9 | — |
-| `Altinn.Common.AccessTokenClient` | 3.2.12 | 3.2.8 | 3.2.x | 1.1.5 | — | 3.2.x | 3.2.x |
-| `Altinn.Register.Contracts` | — | — | 1.7.0 | 1.7.0/1.8.0 | source | 1.7.0 | — |
-| `Altinn.Platform.Storage.Interface` | 4.7.1-pr.2231 (experimental) | — | — | — | — | — | same experimental version |
-| `Altinn.Authorization.ServiceDefaults` | — | — | — | 5.5.0 | source/5.5.0 | — | — |
+| Package                                | Storage                      | Events | Authentication | Auth (Authz/AM) | Register     | Profile     | App runtime (`Altinn.App.*`) |
+| -------------------------------------- | ---------------------------- | ------ | -------------- | --------------- | ------------ | ----------- | ---------------------------- |
+| `Altinn.Common.PEP`                    | 4.2.3                        | 4.2.3  | —              | —               | —            | 4.2.2/4.2.3 | 4.2.3                        |
+| `Altinn.Common.AccessToken`            | 5.1.12                       | 5.1.9  | 5.1.11/5.1.12  | 5.1.11          | —            | 5.1.9       | —                            |
+| `Altinn.Common.AccessTokenClient`      | 3.2.12                       | 3.2.8  | 3.2.x          | 1.1.5           | —            | 3.2.x       | 3.2.x                        |
+| `Altinn.Register.Contracts`            | —                            | —      | 1.7.0          | 1.7.0/1.8.0     | source       | 1.7.0       | —                            |
+| `Altinn.Platform.Storage.Interface`    | 4.7.1-pr.2231 (experimental) | —      | —              | —               | —            | —           | same experimental version    |
+| `Altinn.Authorization.ServiceDefaults` | —                            | —      | —              | 5.5.0           | source/5.5.0 | —           | —                            |
 
 All services are on the same major versions of the token/PEP libraries, and the app runtime uses
 the same experimental Storage.Interface as Storage. No incompatibility found at the contract level.
@@ -89,18 +88,18 @@ be verified at runtime in milestone 2.
 Launch-profile ports (from each `launchSettings.json`); these match the cross-references in the
 services' checked-in `appsettings.json` and are used as the local port plan.
 
-| Service | Path | Port | Datastore | Outbound HTTP dependencies (checked-in local config) | Messaging / other |
-| --- | --- | --- | --- | --- | --- |
-| Reporting app (`ttd/frontend-test`) | `altinn-studio/src/test/apps/frontend-test` | 5005 via studioctl | — | Storage, Register, Profile, Authentication (OpenID), Authorization, Events, Access Management, PDF3, workflow-engine (all injected by `studioctl`, `src/cli/internal/cmd/app/env.go`, overridable via env because they are `setDefault`) | — |
-| Storage | `altinn-storage/src/Storage` | 5010 | Postgres `storagedb`; Azurite blob | Authorization (`:5050`), Register (`:5101`→ retarget `:5020`), Authentication OpenID (`local.altinn.cloud`) | Wolverine → Azure Service Bus (emulator); Azurite queue `file-scan-inbound` |
-| Events API | `altinn-events/src/Events` | 5080 | Postgres `eventsdb` | Register, Profile, Authorization (`:5101` → retarget) | Wolverine → ASB emulator queues `altinn.events.*`; Azurite queues |
-| Events Functions (workers) | `altinn-events/src/Events.Functions` | Functions host | — | Events API, Key Vault (**must be disabled locally**) | ASB listeners: outbound + subscription-validation |
-| Authentication | `altinn-authentication/src/Authentication` | 5040 | Postgres `authentication` | Profile (SSN → user lookup), Register v2 internal (self-identified users, org lookup), Access Management, Authorization, Resource Registry (system-user flows only) | Azurite queue (event log); signing cert `jwtselfsignedcert.pfx` |
-| Authorization (PDP) | `altinn-auth/src/apps/Altinn.Authorization` | 5050 | Postgres `authorizationdb`; Azurite blob (policies) | Register `:5020`, Storage `:5010`, Profile `:5030`, Access Management `:5117`, Resource Registry `:5100`, OED (probate) | — |
-| Access Management | `altinn-auth/src/apps/Altinn.AccessManagement` | 5117 | Postgres (auth DB); Valkey | Authentication `:5040`, Authorization `:5050`, Profile `:5030`, Register `:5020`, Resource Registry `:5100` | Azurite |
-| Register | `altinn-register/src/apps/Altinn.Register` | 5020 | Postgres `register` | Authentication, Access Management, **FREG, SIRE, SIRE-events, Altinn 2 / SBL bridge** | RabbitMQ (MassTransit) |
-| Profile | `altinn-profile/src/Altinn.Profile` | 5030 | Postgres `profiledb` | Register `:5020`, Authorization, Notifications (`:5090`), **KRR, KOF, SBL bridge** | — |
-| PDF3, workflow-engine | `altinn-studio/src/Runtime/{pdf3,workflow-engine}` | studioctl topology (`local.altinn.cloud:8000`) | workflow-engine: Postgres | app callback | — |
+| Service                             | Path                                               | Port                                           | Datastore                                           | Outbound HTTP dependencies (checked-in local config)                                                                                                                                                                                     | Messaging / other                                                           |
+| ----------------------------------- | -------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Reporting app (`ttd/frontend-test`) | `altinn-studio/src/test/apps/frontend-test`        | 5005 via studioctl                             | —                                                   | Storage, Register, Profile, Authentication (OpenID), Authorization, Events, Access Management, PDF3, workflow-engine (all injected by `studioctl`, `src/cli/internal/cmd/app/env.go`, overridable via env because they are `setDefault`) | —                                                                           |
+| Storage                             | `altinn-storage/src/Storage`                       | 5010                                           | Postgres `storagedb`; Azurite blob                  | Authorization (`:5050`), Register (`:5101`→ retarget `:5020`), Authentication OpenID (`local.altinn.cloud`)                                                                                                                              | Wolverine → Azure Service Bus (emulator); Azurite queue `file-scan-inbound` |
+| Events API                          | `altinn-events/src/Events`                         | 5080                                           | Postgres `eventsdb`                                 | Register, Profile, Authorization (`:5101` → retarget)                                                                                                                                                                                    | Wolverine → ASB emulator queues `altinn.events.*`; Azurite queues           |
+| Events Functions (workers)          | `altinn-events/src/Events.Functions`               | Functions host                                 | —                                                   | Events API, Key Vault (**must be disabled locally**)                                                                                                                                                                                     | ASB listeners: outbound + subscription-validation                           |
+| Authentication                      | `altinn-authentication/src/Authentication`         | 5040                                           | Postgres `authentication`                           | Profile (SSN → user lookup), Register v2 internal (self-identified users, org lookup), Access Management, Authorization, Resource Registry (system-user flows only)                                                                      | Azurite queue (event log); signing cert `jwtselfsignedcert.pfx`             |
+| Authorization (PDP)                 | `altinn-auth/src/apps/Altinn.Authorization`        | 5050                                           | Postgres `authorizationdb`; Azurite blob (policies) | Register `:5020`, Storage `:5010`, Profile `:5030`, Access Management `:5117`, Resource Registry `:5100`, OED (probate)                                                                                                                  | —                                                                           |
+| Access Management                   | `altinn-auth/src/apps/Altinn.AccessManagement`     | 5117                                           | Postgres (auth DB); Valkey                          | Authentication `:5040`, Authorization `:5050`, Profile `:5030`, Register `:5020`, Resource Registry `:5100`                                                                                                                              | Azurite                                                                     |
+| Register                            | `altinn-register/src/apps/Altinn.Register`         | 5020                                           | Postgres `register`                                 | Authentication, Access Management, **FREG, SIRE, SIRE-events, Altinn 2 / SBL bridge**                                                                                                                                                    | RabbitMQ (MassTransit)                                                      |
+| Profile                             | `altinn-profile/src/Altinn.Profile`                | 5030                                           | Postgres `profiledb`                                | Register `:5020`, Authorization, Notifications (`:5090`), **KRR, KOF, SBL bridge**                                                                                                                                                       | —                                                                           |
+| PDF3, workflow-engine               | `altinn-studio/src/Runtime/{pdf3,workflow-engine}` | studioctl topology (`local.altinn.cloud:8000`) | workflow-engine: Postgres                           | app callback                                                                                                                                                                                                                             | —                                                                           |
 
 ### Dependency classification
 
@@ -115,18 +114,18 @@ from `studioctl env up`, OTel collector/Grafana stack from `studioctl` (logs/tra
 
 **External-government-system substitutes (explicit, synthetic):**
 
-| External system | Consumer | Substitute | Notes |
-| --- | --- | --- | --- |
-| ID-porten (upstream OIDC IdP) | Authentication | **MockPorten** (`altinn-authentication/samples/mockporten`) — synthetic-only OIDC provider validating Tenor-style PIDs (month 81–92, mod-11) | first-party, explicitly synthetic; configured as an `OidcProviders` entry |
-| FREG (population register) | Register person import | **Synthetic seed** of person parties written through Register's own import/DB path; FREG client disabled | Register has no built-in FREG stub |
-| SIRE / CCR (company register) | Register org + role import | **Synthetic seed** of org parties and external roles (`dagl`, `regna`, …); SIRE listen/enrich disabled (AppHost already defaults these off) | roles drive Access Management → Authorization decisions |
-| Altinn 2 / SBL bridge | Register (party/user ids, profiles), Profile, Authentication (legacy cookies) | disabled (`PartyImport__A2__*=false`, `Party__CreatePartyId=true`); Authentication ADR-0004 documents SBL decommission | user ids must be assigned locally by Register |
-| KRR (contact/reservation register), KOF | Profile | jobs disabled (`JobSettings.KrrSyncEnabled=false`, `OrgSyncEnabled=false`); contact info seeded synthetically or absent | Profile still serves `users/…` from Register data |
-| Maskinporten | Register (FREG/SIRE client credentials), Authentication (org tokens) | not needed once FREG/SIRE disabled; Maskinporten org-token exchange out of scope | no live call |
-| Azure Key Vault | Events Functions, all services' prod config | local config values / env vars | no Azure resources |
-| Resource Registry (`altinn-resource-registry`, first-party but **not in the provided fork list**) | Authorization, Access Management, Authentication | **not run** — app flows use `org/app` policies pushed to Authorization's policy blob store, not resource-registry resources | outbound calls to it must be shown as unused or explicitly disabled at runtime; flagged as a possible access request |
-| Notifications (`altinn-notifications`, first-party, not in list) | Profile, Authentication | not run; Profile notification-settings import disabled | not on the acceptance path |
-| OED / probate | Authorization | not run | only used for probate roles |
+| External system                                                                                   | Consumer                                                                      | Substitute                                                                                                                                   | Notes                                                                                                                |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| ID-porten (upstream OIDC IdP)                                                                     | Authentication                                                                | **MockPorten** (`altinn-authentication/samples/mockporten`) — synthetic-only OIDC provider validating Tenor-style PIDs (month 81–92, mod-11) | first-party, explicitly synthetic; configured as an `OidcProviders` entry                                            |
+| FREG (population register)                                                                        | Register person import                                                        | **Synthetic seed** of person parties written through Register's own import/DB path; FREG client disabled                                     | Register has no built-in FREG stub                                                                                   |
+| SIRE / CCR (company register)                                                                     | Register org + role import                                                    | **Synthetic seed** of org parties and external roles (`dagl`, `regna`, …); SIRE listen/enrich disabled (AppHost already defaults these off)  | roles drive Access Management → Authorization decisions                                                              |
+| Altinn 2 / SBL bridge                                                                             | Register (party/user ids, profiles), Profile, Authentication (legacy cookies) | disabled (`PartyImport__A2__*=false`, `Party__CreatePartyId=true`); Authentication ADR-0004 documents SBL decommission                       | user ids must be assigned locally by Register                                                                        |
+| KRR (contact/reservation register), KOF                                                           | Profile                                                                       | jobs disabled (`JobSettings.KrrSyncEnabled=false`, `OrgSyncEnabled=false`); contact info seeded synthetically or absent                      | Profile still serves `users/…` from Register data                                                                    |
+| Maskinporten                                                                                      | Register (FREG/SIRE client credentials), Authentication (org tokens)          | not needed once FREG/SIRE disabled; Maskinporten org-token exchange out of scope                                                             | no live call                                                                                                         |
+| Azure Key Vault                                                                                   | Events Functions, all services' prod config                                   | local config values / env vars                                                                                                               | no Azure resources                                                                                                   |
+| Resource Registry (`altinn-resource-registry`, first-party but **not in the provided fork list**) | Authorization, Access Management, Authentication                              | **not run** — app flows use `org/app` policies pushed to Authorization's policy blob store, not resource-registry resources                  | outbound calls to it must be shown as unused or explicitly disabled at runtime; flagged as a possible access request |
+| Notifications (`altinn-notifications`, first-party, not in list)                                  | Profile, Authentication                                                       | not run; Profile notification-settings import disabled                                                                                       | not on the acceptance path                                                                                           |
+| OED / probate                                                                                     | Authorization                                                                 | not run                                                                                                                                      | only used for probate roles                                                                                          |
 
 ## 5. Register decision
 

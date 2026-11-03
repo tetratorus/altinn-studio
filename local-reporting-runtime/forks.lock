@@ -1,8 +1,8 @@
 # Pinned revisions of the sibling fork checkouts (../../<repo>) that scripts/build-images.sh builds.
 # Format: <repo> <commit>. Update together with README.md section 2 after re-running acceptance.sh.
-altinn-storage        daa7654a72ef89a0be0c51587dacdfe2f4e1ccdd
-altinn-events         fcc0a70a06eb594968a52fedee8ef37052e61d16
-altinn-authentication 938bc1382efe156940623f81077dd7fccfe9d4a4
-altinn-auth           f33afeffab2bb6172cba375d8bd7b4808183e16c
-altinn-register       1bdb4789d7a8abd726abe6bf92ef7da9fd4cbb55
-altinn-profile        156d8c10b280f02b6b71ca28492ee4587cef8d71
+altinn-storage        2112d3223d35528600d36b87fd5fb29e7373b6f8
+altinn-events         0bdc6a6a3159f2af622411abd94e362ce3c42ac7
+altinn-authentication 8427c49bf2eb35a2e14fa60de776e883cde1d39f
+altinn-auth           b57bd5f2924872122a70f0d6855116e30803f8d5
+altinn-register       ce6bb786718461d668c795b08c4e79f8709a19ae
+altinn-profile        a65d6b7e3cf3c7e995320c1c50a3b24b8e3f8828

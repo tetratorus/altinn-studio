@@ -22,6 +22,10 @@ Section ordering: Added, Changed, Fixed, Removed, Security, Deprecated.
 
 - `studioctl app upgrade v9` preserves your C# files' indentation and line endings when simplifying generated type names.
 
+### Security
+
+- Localtest and the studioctl companion server now run on .NET 10.0.14, which fixes four security vulnerabilities in earlier .NET 10 releases.
+
 ## [0.1.0-preview.25] - 2026-09-14
 
 ### Added

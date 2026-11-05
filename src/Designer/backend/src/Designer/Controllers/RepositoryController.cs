@@ -778,7 +778,13 @@ public class RepositoryController : ControllerBase
 
             foreach (var changedFile in changedFiles)
             {
-                archive.CreateEntryFromFile(Path.Join(appRoot, changedFile), changedFile);
+                string filePath = Path.GetFullPath(Path.Join(appRoot, changedFile));
+                if (!IsRegularFileInsideDirectory(appRoot, filePath))
+                {
+                    continue;
+                }
+
+                archive.CreateEntryFromFile(filePath, changedFile);
             }
         }
 
@@ -792,7 +798,7 @@ public class RepositoryController : ControllerBase
         var ret = new List<string>();
         foreach (var directory in currentDir.EnumerateDirectories())
         {
-            if (directory.Name == ".git")
+            if (directory.Name == ".git" || IsLink(directory))
             {
                 continue;
             }
@@ -802,9 +808,47 @@ public class RepositoryController : ControllerBase
 
         foreach (var file in currentDir.GetFiles())
         {
+            if (IsLink(file))
+            {
+                continue;
+            }
+
             ret.Add(file.FullName.Replace('\\', '/').Replace(appRoot, string.Empty));
         }
 
         return ret;
+    }
+
+    private static bool IsRegularFileInsideDirectory(string rootDirectory, string filePath)
+    {
+        string fullRootDirectory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(rootDirectory));
+        if (!filePath.StartsWith(fullRootDirectory + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var file = new FileInfo(filePath);
+        if (!file.Exists || IsLink(file))
+        {
+            return false;
+        }
+
+        DirectoryInfo directory = file.Directory;
+        while (directory is not null && Path.TrimEndingDirectorySeparator(directory.FullName) != fullRootDirectory)
+        {
+            if (IsLink(directory))
+            {
+                return false;
+            }
+
+            directory = directory.Parent;
+        }
+
+        return true;
+    }
+
+    private static bool IsLink(FileSystemInfo fileSystemInfo)
+    {
+        return fileSystemInfo.LinkTarget is not null || fileSystemInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
     }
 }

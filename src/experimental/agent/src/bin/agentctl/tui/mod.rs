@@ -560,7 +560,7 @@ mod tests {
         let root = tempfile::tempdir().expect("temporary directory");
         let cwd = empty_directory(root.path(), "cwd");
 
-        assert!(manifest_candidates(Some(cwd), &[]).await.is_empty());
-        assert!(manifest_candidates(None, &[]).await.is_empty());
+        assert_eq!(manifest_candidates(Some(cwd), &[]).await.len(), 0);
+        assert_eq!(manifest_candidates(None, &[]).await.len(), 0);
     }
 }

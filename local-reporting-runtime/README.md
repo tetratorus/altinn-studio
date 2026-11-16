@@ -49,12 +49,12 @@ hostnames (in `/etc/hosts`, resolving to 127.0.0.1) through the gateway.
 | Component                                                                        | Source                                                                                             | Revision / version                                                                                   |
 | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Studio (app runtime libs, frontend, sample app, workflow engine, pdf3, this dir) | `tetratorus/altinn-studio`                                                                         | `a980e813d07d5136df8a032168535d938b40e73c` + this directory                                          |
-| Storage                                                                          | `tetratorus/altinn-storage`                                                                        | `2112d3223d35528600d36b87fd5fb29e7373b6f8`                                                           |
-| Events                                                                           | `tetratorus/altinn-events`                                                                         | `0bdc6a6a3159f2af622411abd94e362ce3c42ac7`                                                           |
-| Authentication (+ `samples/mockporten`)                                          | `tetratorus/altinn-authentication`                                                                 | `8427c49bf2eb35a2e14fa60de776e883cde1d39f` (includes PR #4 MockPorten changes; .NET 10.0.14 upgrade) |
-| Authorization, Access Management                                                 | `tetratorus/altinn-auth`                                                                           | `b57bd5f2924872122a70f0d6855116e30803f8d5`                                                           |
-| Register                                                                         | `tetratorus/altinn-register`                                                                       | `ce6bb786718461d668c795b08c4e79f8709a19ae`                                                           |
-| Profile                                                                          | `tetratorus/altinn-profile`                                                                        | `f79c356ee28e61caba15bec15847d342d25d74e3`                                                           |
+| Storage                                                                          | `tetratorus/altinn-storage`                                                                        | `888221b3cd2764aa2f77b566a90c6b7f454aedca`                                                           |
+| Events                                                                           | `tetratorus/altinn-events`                                                                         | `6d2573ce23358484fe3a00abd0a64470977e9a90`                                                           |
+| Authentication (+ `samples/mockporten`)                                          | `tetratorus/altinn-authentication`                                                                 | `0b2eb01a950098d127dc9de62ac7e17351354fcf` (includes PR #4 MockPorten changes; .NET 10.0.15 upgrade) |
+| Authorization, Access Management                                                 | `tetratorus/altinn-auth`                                                                           | `21b308a7d0fce0f07005de41b50844f62bae9419`                                                           |
+| Register                                                                         | `tetratorus/altinn-register`                                                                       | `39f24de1de4aec4c550f6dc3b926cc4fa0807507`                                                           |
+| Profile                                                                          | `tetratorus/altinn-profile`                                                                        | `1ef6bb064e41429f0d7d6e21848a4b6408b2668a`                                                           |
 | Workflow engine                                                                  | `ghcr.io/altinn/altinn-studio/runtime-workflow-engine-app`                                         | `a45a743b78`                                                                                         |
 | pdf3                                                                             | `ghcr.io/altinn/altinn-studio/runtime-pdf3-worker`                                                 | `694406e93c`                                                                                         |
 | PostgreSQL                                                                       | `postgres`                                                                                         | `16-alpine`                                                                                          |
@@ -64,7 +64,7 @@ hostnames (in `/etc/hosts`, resolving to 127.0.0.1) through the gateway.
 | Lowkey Vault                                                                     | `nagyesta/lowkey-vault`                                                                            | `7.3.98`                                                                                             |
 | OpenTelemetry collector                                                          | `otel/opentelemetry-collector-contrib`                                                             | `0.128.0`                                                                                            |
 | Gateway                                                                          | `nginx`                                                                                            | `1.27-alpine`                                                                                        |
-| Toolchain                                                                        | Docker 29.7.2, Compose v5.4.0, .NET SDK 10.0.403, Node 24.22.2 / Yarn 4.18.0 (corepack), Go 1.26.4 | Ubuntu 22.04 x86_64                                                                                  |
+| Toolchain                                                                        | Docker 29.7.2, Compose v5.4.0, .NET SDK 10.0.404, Node 24.22.2 / Yarn 4.18.0 (corepack), Go 1.26.4 | Ubuntu 22.04 x86_64                                                                                  |
 
 The seven `lrr/*:local` images are built by `scripts/build-images.sh` from the sibling checkouts
 (`~/repos/altinn-*`) at the revisions above. Those revisions are pinned in [`forks.lock`](forks.lock):
@@ -169,7 +169,7 @@ user's 403; it also checks that the first receipt PDF downloads as `application/
 (`LRR_CREATE_PDF=0` skips PDFs). It takes the frontend-test app's "skip to Task_3" shortcut, so Task_2
 (validation errors, file upload) is not exercised in the browser; `scripts/acceptance.sh` covers Task_2
 through the app API (invalid data rejected, attachment upload, process next). One screenshot per step lands in `evidence/browser-<ts>/` (latest:
-[`browser-20261103T083327Z`](evidence/browser-20261103T083327Z/README.md), 11/11 PASS). 5. Look behind the scenes: `docker compose logs -f events storage authorization`, the subscriber's
+[`browser-20261116T024608Z`](evidence/browser-20261116T024608Z/README.md), 11/11 PASS). 5. Look behind the scenes: `docker compose logs -f events storage authorization`, the subscriber's
 deliveries in `data/subscriber/received.jsonl`, traces in `logs/otel/traces.jsonl`, RabbitMQ UI at
 `http://localhost:15672` (guest/guest).
 
@@ -191,22 +191,19 @@ services; `scripts/restart-check.sh` and `scripts/observability.sh` cover items 
 | 8   | Upstream tests / smoke tests                                                                                                                                | PASS (see below) | `upstream-tests-*.md`, `browser-*/`         |
 | 9   | Stop and restart without data loss (`down.sh` → `up.sh`, 13 checks incl. attachment sha256, PDFs, process state, events, subscription)                      | PASS             | `restart-*.md`                              |
 
-Last run (2026-11-03, after the .NET 10.0.14 / SDK 10.0.403 upgrade; every image rebuilt from `forks.lock`):
+Last run (2026-11-16, after the .NET 10.0.15 / SDK 10.0.404 upgrade; every image rebuilt from `forks.lock`):
 acceptance `passed=26 failed=0`, restart `passed=13 failed=0`, browser walkthrough 11/11, observability
-759 OTel spans for the acceptance instance (`observability-20261103T083305Z.md`). The collector's file
+616 OTel spans for the acceptance instance (`observability-20261116T024606Z.md`). The collector's file
 exporter runs with `append: true`; without it a restart truncates `logs/otel/traces.jsonl`, and
 `observability.sh` fails on 0 spans.
 
 ### Upstream builds and tests run
 
-Per-suite counts (2026-11-03, .NET 10.0.14 upgrade): storage, events and authentication in
-[`upstream-tests-20261103T083117Z.md`](evidence/upstream-tests-20261103T083117Z.md); access management, profile and a
-storage re-run in [`upstream-tests-20261103T084126Z.md`](evidence/upstream-tests-20261103T084126Z.md); register in
-[`upstream-tests-20261103T085035Z.md`](evidence/upstream-tests-20261103T085035Z.md); authorization in
-[`upstream-tests-20261103T085547Z.md`](evidence/upstream-tests-20261103T085547Z.md). The failing access management,
-register and profile rows in the first file are Docker Hub pull rate limits (HTTP 429) on Testcontainers images, not test
-failures; pulling the images from `mirror.gcr.io` and tagging them locally (`postgres:16.1-alpine`, `postgres:16.10-alpine`,
-`postgres:17`, `atmoz/sftp:alpine`) fixed it.
+Per-suite counts (2026-11-16, .NET 10.0.15 upgrade): storage in
+[`upstream-tests-20261116T024256Z.md`](evidence/upstream-tests-20261116T024256Z.md); the other suites in
+[`upstream-tests-20261116T024640Z.md`](evidence/upstream-tests-20261116T024640Z.md). Docker Hub pull rate limits (HTTP 429) on
+Testcontainers images show up as failing suites, not test failures; pulling the images from `mirror.gcr.io` and tagging
+them locally (`postgres:16.1-alpine`, `postgres:16.10-alpine`, `postgres:17`, `atmoz/sftp:alpine`) fixes it.
 
 | Repo / area                                             | Command                                                          | Result                                                                                         |
 | ------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |

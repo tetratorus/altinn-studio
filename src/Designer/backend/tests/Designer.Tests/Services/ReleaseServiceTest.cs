@@ -278,12 +278,18 @@ public class ReleaseServiceTest
         );
     }
 
-    private void SetupAppLibVersion(string version, bool includeUtf8Bom = false)
+    private void SetupAppLibVersion(string version, bool includeUtf8Bom = false) =>
+        SetupAppLibPackageReference(
+            $"""<PackageReference Include="Altinn.App.Api" Version="{version}" />""",
+            includeUtf8Bom
+        );
+
+    private void SetupAppLibPackageReference(string packageReference, bool includeUtf8Bom = false)
     {
         string csprojContent = $"""
             <Project Sdk="Microsoft.NET.Sdk.Web">
               <ItemGroup>
-                <PackageReference Include="Altinn.App.Api" Version="{version}" />
+                {packageReference}
               </ItemGroup>
             </Project>
             """;
@@ -759,6 +765,121 @@ public class ReleaseServiceTest
                 ),
             Times.Once
         );
+    }
+
+    [Theory]
+    [InlineData("""<PackageReference Include="Altinn.App.Api" Version="[9.0,10)" />""")]
+    [InlineData("""<PackageReference Include="Altinn.App.Api" VersionOverride="9.1.2" />""")]
+    [InlineData("""<PackageReference Include="Altinn.App.Api"><Version>9.1.2</Version></PackageReference>""")]
+    public async Task CreateAsync_WithAppLibVersion9InNonLiteralShapeAndNullAppScopes_AddsDefaultMaskinportenScopes(
+        string packageReference
+    )
+    {
+        // Arrange
+        ReleaseEntity releaseEntity = CreateReleaseEntityWithNullAppScopes();
+        _appScopesService
+            .Setup(r =>
+                r.AddDefaultMaskinportenScopesAsync(It.IsAny<AltinnRepoEditingContext>(), It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(
+                new AppScopesEntity
+                {
+                    Org = _org,
+                    App = _app,
+                    Scopes = new HashSet<MaskinPortenScopeEntity>
+                    {
+                        new() { Scope = DefaultMaskinportenScopes.ServiceOwner },
+                        new() { Scope = DefaultMaskinportenScopes.ServiceOwnerInstancesRead },
+                        new() { Scope = DefaultMaskinportenScopes.ServiceOwnerInstancesWrite },
+                    },
+                }
+            );
+        SetupAppLibPackageReference(packageReference);
+
+        ReleaseService releaseService = CreateReleaseService();
+
+        // Act
+        await releaseService.CreateAsync(releaseEntity);
+
+        // Assert
+        _appScopesService.Verify(
+            r =>
+                r.AddDefaultMaskinportenScopesAsync(
+                    It.IsAny<AltinnRepoEditingContext>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+    }
+
+    [Theory]
+    [InlineData("""<PackageReference Include="Altinn.App.Api" />""")]
+    [InlineData("""<PackageReference Include="Altinn.App.Api" Version="$(AltinnAppApiVersion)" />""")]
+    public async Task CreateAsync_WithUnresolvableAppLibVersionAndNullAppScopes_LogsWarningAndPassesEmptyArray(
+        string packageReference
+    )
+    {
+        // Arrange
+        ReleaseEntity releaseEntity = CreateReleaseEntityWithNullAppScopes();
+        SetupAppLibPackageReference(packageReference);
+
+        ReleaseService releaseService = CreateReleaseService();
+
+        // Act
+        await releaseService.CreateAsync(releaseEntity);
+
+        // Assert
+        _appScopesService.Verify(
+            r =>
+                r.AddDefaultMaskinportenScopesAsync(
+                    It.IsAny<AltinnRepoEditingContext>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Never
+        );
+        _azureDevOpsBuildClient.Verify(
+            b =>
+                b.QueueAsync(
+                    It.Is<QueueBuildParameters>(p => p.AppMaskinportenScopes == "[]"),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+        VerifyWarningLog();
+    }
+
+    private ReleaseEntity CreateReleaseEntityWithNullAppScopes()
+    {
+        List<string> buildStatus = new()
+        {
+            BuildStatus.InProgress.ToEnumMemberAttributeValue(),
+            BuildStatus.NotStarted.ToEnumMemberAttributeValue(),
+        };
+        List<string> buildResult = new() { BuildResult.Succeeded.ToEnumMemberAttributeValue() };
+
+        _releaseRepository
+            .Setup(r => r.Get(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), buildStatus, buildResult))
+            .ReturnsAsync(new List<ReleaseEntity>());
+        _releaseRepository
+            .Setup(r => r.Create(It.IsAny<ReleaseEntity>()))
+            .ReturnsAsync(GetReleases("createdRelease.json").First());
+        _appScopesService
+            .Setup(r => r.GetAppScopesAsync(It.IsAny<AltinnRepoContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AppScopesEntity)null);
+        _azureDevOpsBuildClient
+            .Setup(b => b.QueueAsync(It.IsAny<QueueBuildParameters>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GetBuild());
+
+        return new ReleaseEntity
+        {
+            TagName = "1",
+            Name = "1",
+            Body = "test-app",
+            TargetCommitish = "eec136ac2d31cf984d2053df79f181b99c3b4db5",
+            Org = _org,
+            App = _app,
+        };
     }
 
     [Fact]

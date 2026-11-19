@@ -1,6 +1,9 @@
 import type { IGenericEditComponent } from '../componentConfig';
 import { FormField } from '../../FormField';
-import { setComponentProperty } from '@altinn/ux-editor/utils/component';
+import {
+  setComponentProperty,
+  validateNumberOfAttachments,
+} from '@altinn/ux-editor/utils/component';
 import type { ComponentType } from 'app-shared/types/ComponentType';
 import type { FormItem } from '../../../types/FormItem';
 import type { FilterKeysOfType } from 'app-shared/types/FilterKeysOfType';
@@ -48,6 +51,9 @@ export const EditNumberValue = <T extends ComponentType, K extends NumberKeys<Fo
     );
   };
 
+  const validateValue = (newValue: number) =>
+    validateNumberOfAttachments({ ...component, [propertyKey]: newValue });
+
   const schemaPropertyPath = component.propertyPath
     ? `${component.propertyPath}/properties/${String(propertyKey)}`
     : undefined;
@@ -58,6 +64,7 @@ export const EditNumberValue = <T extends ComponentType, K extends NumberKeys<Fo
       label={componentPropertyLabel(String(propertyKey))}
       value={component[propertyKey]}
       onChange={handleValueChange}
+      customValidationRules={validateValue}
       propertyPath={schemaPropertyPath}
       helpText={componentPropertyHelpText(String(propertyKey))}
       renderField={({ fieldProps }) =>

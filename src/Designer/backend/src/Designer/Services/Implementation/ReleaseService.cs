@@ -269,12 +269,25 @@ public class ReleaseService : IReleaseService
             byte[] csprojContent = Convert.FromBase64String(appCsproj.Content);
             string[] packageNames = ["Altinn.App.Api", "Altinn.App.Api.Experimental"];
 
-            return PackageVersionHelper.TryGetPackageVersionFromCsprojContent(
+            if (
+                !PackageVersionHelper.TryGetPackageVersionFromCsprojContent(
                     csprojContent,
                     packageNames,
                     out SemanticVersion version
                 )
-                && version.Major >= 9;
+            )
+            {
+                Activity.Current?.SetTag("maskinporten.default_scopes_app_lib_version_unresolved", true);
+                _logger.LogWarning(
+                    "Could not resolve the Altinn.App.Api version from App/App.csproj for {Org}/{App} at {TargetCommitish}, so default Maskinporten scopes were not added. Set a literal Version attribute on the Altinn.App.Api PackageReference in App/App.csproj.",
+                    release.Org,
+                    release.App,
+                    release.TargetCommitish
+                );
+                return false;
+            }
+
+            return version.Major >= 9;
         }
         catch (FormatException ex)
         {

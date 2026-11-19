@@ -30,11 +30,13 @@ public class RequestSyncEvaluator<TContext, TEvaluatorType> : IRequestSyncEvalua
 
     public bool TryEvaluateShouldSyncRequest(HttpContext httpContext, out TContext context)
     {
-        if (!_requestContextResolver.TryResolveContext(httpContext, out context))
+        context = null;
+
+        if (!_syncEligibilityEvaluators.Any(evaluator => evaluator.IsEligibleForSynchronization(httpContext)))
         {
             return false;
         }
 
-        return _syncEligibilityEvaluators.Any(evaluator => evaluator.IsEligibleForSynchronization(httpContext));
+        return _requestContextResolver.TryResolveContext(httpContext, out context);
     }
 }

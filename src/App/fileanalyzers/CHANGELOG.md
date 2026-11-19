@@ -9,6 +9,10 @@ Section ordering: Added, Changed, Fixed, Removed, Security, Deprecated.
 
 ## [Unreleased]
 
+### Fixed
+
+- The MIME type validator now accepts `.txt` and `.csv` files whose content is plain text (UTF-8 with or without a byte order mark, UTF-16 with a byte order mark, or Windows-1252), when `text/plain` or `text/csv` is an allowed content type. A `.csv` file is now recognized as `text/csv` also when it starts with a byte order mark, as Excel writes it. Files with other binary content renamed to `.txt` or `.csv` are still rejected.
+
 ## [9.0.0-preview.1] - 2026-09-09
 
 ### Changed

@@ -23,6 +23,20 @@ internal sealed class MimeTypeAnalyzer(
         if (syncIOFeature is not null)
             syncIOFeature.AllowSynchronousIO = true;
 
+        // Plain text has no signature for the inspector to match, so its content is checked
+        // separately, which needs a second read of the stream.
+        string extension = Path.GetExtension(filename) ?? "";
+        string? plainTextMimeType = PlainText.MimeTypeForExtension(extension);
+        using var buffer =
+            plainTextMimeType is not null && !stream.CanSeek ? new MemoryStream() : null;
+        if (buffer is not null)
+        {
+            stream.CopyTo(buffer);
+            buffer.Position = 0;
+            stream = buffer;
+        }
+        long start = stream.CanSeek ? stream.Position : 0;
+
         var results = _inspector.Inspect(stream);
 
         // We only care for the 100% match anything else is considered unsafe.
@@ -31,7 +45,17 @@ internal sealed class MimeTypeAnalyzer(
             .FirstOrDefault(match => match.Percentage == 1);
 
         var fileAnalysisResult = new FileAnalysisResult(Id);
-        if (match is not null)
+        if (
+            plainTextMimeType is not null
+            && (match is null || match.Definition.File.MimeType == PlainTextMimeType)
+            && IsPlainText(stream, start)
+        )
+        {
+            fileAnalysisResult.Extensions = [extension[1..].ToLowerInvariant()];
+            fileAnalysisResult.MimeType = plainTextMimeType;
+            fileAnalysisResult.Filename = filename;
+        }
+        else if (match is not null)
         {
             fileAnalysisResult.Extensions = match.Definition.File.Extensions.ToList();
             fileAnalysisResult.MimeType = match.Definition.File.MimeType;
@@ -39,5 +63,15 @@ internal sealed class MimeTypeAnalyzer(
         }
 
         return Task.FromResult(fileAnalysisResult);
+    }
+
+    private const string PlainTextMimeType = "text/plain";
+
+    private static bool IsPlainText(Stream stream, long start)
+    {
+        stream.Position = start;
+        using var content = new MemoryStream();
+        stream.CopyTo(content);
+        return PlainText.IsPlainText(content.GetBuffer().AsSpan(0, (int)content.Length));
     }
 }

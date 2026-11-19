@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Altinn.Studio.Designer.TypedHttpClients.DelegatingHandlers;
 using Microsoft.Extensions.Caching.Memory;
@@ -12,7 +13,7 @@ public class CachingDelegatingHandlerTests
     readonly IMemoryCache _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
     private CachingDelegatingHandler GenerateCachingDelegatingHandler() =>
-        new(_memoryCache, 10) { InnerHandler = new HttpClientHandler() { AllowAutoRedirect = true } };
+        new(_memoryCache, 10) { InnerHandler = new StubDocsSiteHandler() };
 
     [Theory]
     [InlineData(new byte[] { 1, 2, 3 })]
@@ -80,5 +81,24 @@ public class CachingDelegatingHandlerTests
                 out CachingDelegatingHandler.CacheResponseDataEntry _
             )
         );
+    }
+
+    private sealed class StubDocsSiteHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        )
+        {
+            HttpStatusCode statusCode = request switch
+            {
+                { Method.Method: not "GET" } => HttpStatusCode.MethodNotAllowed,
+                { RequestUri.AbsolutePath: "/" } => HttpStatusCode.OK,
+                _ => HttpStatusCode.NotFound,
+            };
+            return Task.FromResult(
+                new HttpResponseMessage(statusCode) { Content = new ByteArrayContent([]), RequestMessage = request }
+            );
+        }
     }
 }

@@ -1,10 +1,14 @@
 ﻿using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using Altinn.Studio.Designer.TypedHttpClients.AltinnAuthorization;
 using Designer.Tests.Controllers.ApiTests;
 using Designer.Tests.Utils;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using PolicyAdmin.Models;
 using Xunit;
 
@@ -18,6 +22,16 @@ public class GetActionOptionsTests
 
     public GetActionOptionsTests(WebApplicationFactory<Program> factory)
         : base(factory) { }
+
+    protected override void ConfigureTestServices(IServiceCollection services)
+    {
+        base.ConfigureTestServices(services);
+        var policyOptionsMock = new Mock<IPolicyOptions>();
+        policyOptionsMock
+            .Setup(options => options.GetActionOptions(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new ActionOption { ActionId = "read", ActionTitle = "Les" }]);
+        services.AddSingleton(policyOptionsMock.Object);
+    }
 
     [Fact]
     public async Task Get_ActionOptions()
@@ -40,5 +54,6 @@ public class GetActionOptionsTests
         }
 
         Assert.NotNull(actionOptions);
+        Assert.Equal("read", Assert.Single(actionOptions).ActionId);
     }
 }

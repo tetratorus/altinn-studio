@@ -1,4 +1,5 @@
 #nullable disable
+using Altinn.Studio.Designer.Helpers;
 using Altinn.Studio.Designer.Middleware.UserRequestSynchronization.Abstractions;
 using Altinn.Studio.Designer.Middleware.UserRequestSynchronization.Services;
 using Altinn.Studio.Designer.Models;
@@ -19,7 +20,7 @@ public class OrgWideRequestContextResolver : IRequestContextResolver<AltinnOrgCo
     {
         context = null;
 
-        if (_dataExtractor.TryResolveOrg(httpContext, out string org))
+        if (_dataExtractor.TryResolveOrg(httpContext, out string org) && Guard.IsValidOrganization(org))
         {
             context = AltinnOrgContext.FromOrg(org);
             return true;

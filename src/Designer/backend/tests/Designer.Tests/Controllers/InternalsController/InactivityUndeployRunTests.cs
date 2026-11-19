@@ -115,4 +115,30 @@ public class InactivityUndeployRunTests
             Times.Never
         );
     }
+
+    [Fact]
+    public async Task RunUndeploy_WithInvalidOrg_ShouldReturnBadRequest()
+    {
+        const string InvalidOrg = "_ttd";
+        _ = HttpClient;
+        _giteaClientMock
+            .Setup(c => c.GetTeams())
+            .ReturnsAsync([
+                new Team
+                {
+                    Name = "Deploy-at22",
+                    Organization = new Organization { Username = InvalidOrg },
+                },
+            ]);
+
+        using var response = await HttpClient.GetAsync(
+            $"/designer/api/v1/{InvalidOrg}/internals/inactivity-undeploy/at22/run"
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        _jobQueueMock.Verify(
+            q => q.QueuePerOrgEvaluationJobAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+    }
 }

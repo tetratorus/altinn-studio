@@ -1,4 +1,5 @@
 #nullable disable
+using Altinn.Studio.Designer.Helpers;
 using Altinn.Studio.Designer.Middleware.UserRequestSynchronization.Abstractions;
 using Altinn.Studio.Designer.Middleware.UserRequestSynchronization.Services;
 using Altinn.Studio.Designer.Models;
@@ -21,7 +22,9 @@ public class RepoUserWideRequestContextResolver : IRequestContextResolver<Altinn
 
         if (
             _dataExtractor.TryResolveOrg(httpContext, out string org)
+            && Guard.IsValidOrganization(org)
             && _dataExtractor.TryResolveApp(httpContext, out string app)
+            && Guard.IsValidAppRepoName(app)
             && _dataExtractor.TryResolveDeveloper(httpContext, out string developer)
         )
         {

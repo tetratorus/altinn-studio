@@ -28,10 +28,20 @@ public static class Guard
     public static void AssertValidateOrganization(string org)
     {
         AssertNotNullOrEmpty(org, nameof(org));
-        if (!AltinnRegexes.AltinnOrganizationNameRegex().IsMatch(org))
+        if (!IsValidOrganization(org))
         {
             throw new ArgumentException("Provided organization name is not valid");
         }
+    }
+
+    /// <summary>
+    /// Checks whether an organization name is valid, without throwing.
+    /// </summary>
+    /// <param name="org">The organization name.</param>
+    /// <returns>True if the organization name is valid, false otherwise.</returns>
+    public static bool IsValidOrganization(string org)
+    {
+        return !string.IsNullOrEmpty(org) && AltinnRegexes.AltinnOrganizationNameRegex().IsMatch(org);
     }
 
     /// <summary>
@@ -135,10 +145,20 @@ public static class Guard
     /// <param name="repoName">The repository name.</param>
     public static void AssertValidAppRepoName(string repoName)
     {
-        if (string.IsNullOrEmpty(repoName) || !AltinnRegexes.AltinnAppNameRegex().IsMatch(repoName))
+        if (!IsValidAppRepoName(repoName))
         {
             throw new ArgumentException($"The repository name {repoName} is invalid.");
         }
+    }
+
+    /// <summary>
+    /// Checks whether a repository name is valid, without throwing.
+    /// </summary>
+    /// <param name="repoName">The repository name.</param>
+    /// <returns>True if the repository name is valid, false otherwise.</returns>
+    public static bool IsValidAppRepoName(string repoName)
+    {
+        return !string.IsNullOrEmpty(repoName) && AltinnRegexes.AltinnAppNameRegex().IsMatch(repoName);
     }
 
     public static void AssertValidRepoBranchName(string branchName)

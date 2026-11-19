@@ -587,6 +587,9 @@ public class InstancesController : ControllerBase
         bool isCopy = false
     )
     {
+        if (VerifyApplicationNotExpired(application, org, app) is { } expiredResult)
+            return expiredResult;
+
         if (_env.IsProduction() && application.DisallowUserInstantiation)
         {
             var orgClaimIsValid = !string.IsNullOrWhiteSpace(User.GetOrg());
@@ -601,6 +604,25 @@ public class InstancesController : ControllerBase
         }
 
         return null;
+    }
+
+    private ObjectResult? VerifyApplicationNotExpired(ApplicationMetadata application, string org, string app)
+    {
+        if (application.ValidTo is not { } validTo)
+            return null;
+
+        DateTime validToUtc =
+            validTo.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(validTo, DateTimeKind.Utc)
+                : validTo.ToUniversalTime();
+
+        if (DateTime.UtcNow < validToUtc)
+            return null;
+
+        return StatusCode(
+            StatusCodes.Status403Forbidden,
+            $"The application {org}/{app} expired at {validToUtc.ToString("o", CultureInfo.InvariantCulture)} (validTo) and can no longer be used to create new instances"
+        );
     }
 
     /// <summary>
@@ -965,6 +987,9 @@ public class InstancesController : ControllerBase
         }
 
         ApplicationMetadata application = await _appMetadata.GetApplicationMetadata();
+
+        if (VerifyApplicationNotExpired(application, org, app) is { } expiredResult)
+            return expiredResult;
 
         if (application.CopyInstanceSettings?.Enabled is null or false)
         {

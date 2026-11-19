@@ -8,6 +8,8 @@ import {
   propertyTypeMatcher,
   getSupportedPropertyKeysForPropertyType,
   isComponentDeprecated,
+  validateNumberOfAttachments,
+  minNumberOfAttachmentsAboveMaxErrorCode,
 } from './component';
 import { ComponentType, CustomComponentType } from 'app-shared/types/ComponentType';
 import type { FormComponent } from '../types/FormComponent';
@@ -349,5 +351,25 @@ describe('isComponentDeprecated', () => {
 
   it('should return false if component is not deprecated', () => {
     expect(isComponentDeprecated(ComponentType.Input)).toBe(false);
+  });
+});
+
+describe('validateNumberOfAttachments', () => {
+  it.each([
+    { minNumberOfAttachments: 2, maxNumberOfAttachments: 1 },
+    { minNumberOfAttachments: 1, maxNumberOfAttachments: 0 },
+  ])('Returns the error code when the minimum is above the maximum: %o', (component) => {
+    expect(validateNumberOfAttachments(component)).toBe(minNumberOfAttachmentsAboveMaxErrorCode);
+  });
+
+  it.each([
+    { minNumberOfAttachments: 1, maxNumberOfAttachments: 1 },
+    { minNumberOfAttachments: 0, maxNumberOfAttachments: 3 },
+    { minNumberOfAttachments: 2 },
+    { maxNumberOfAttachments: 1 },
+    { minNumberOfAttachments: 2, maxNumberOfAttachments: ['add', 1, 1] },
+    {},
+  ])('Returns null when there is no conflict to report: %o', (component) => {
+    expect(validateNumberOfAttachments(component)).toBeNull();
   });
 });

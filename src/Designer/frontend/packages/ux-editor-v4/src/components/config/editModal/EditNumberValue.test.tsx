@@ -7,6 +7,7 @@ import { ComponentType } from 'app-shared/types/ComponentType';
 import userEvent from '@testing-library/user-event';
 import { appContextMock } from '../../../testing/appContextMock';
 import { useMutation } from '@tanstack/react-query';
+import { componentMocks } from '../../../testing/componentMocks';
 
 const waitForData = async () => {
   const layoutSchemaResult = renderHookWithProviders(() => useLayoutSchemaQuery()).result;
@@ -155,4 +156,86 @@ describe('EditNumberValue', () => {
       propertyPath: 'definitions/inputComponent',
     });
   });
+
+  describe('number of attachments', () => {
+    const attachmentsErrorText = textMock('validation_errors.min_number_of_attachments_above_max');
+
+    it('shows an error and does not save a minimum above the maximum', async () => {
+      const user = userEvent.setup();
+      const handleComponentChange = jest.fn();
+      await renderAttachmentsNumberValue({
+        propertyKey: 'minNumberOfAttachments',
+        handleComponentChange,
+        minNumberOfAttachments: undefined,
+        maxNumberOfAttachments: 1,
+      });
+
+      await user.type(screen.getByRole('textbox'), '2');
+
+      expect(screen.getByText(attachmentsErrorText)).toBeInTheDocument();
+      expect(handleComponentChange).not.toHaveBeenCalled();
+    });
+
+    it('shows an error and does not save a maximum below the minimum', async () => {
+      const user = userEvent.setup();
+      const handleComponentChange = jest.fn();
+      await renderAttachmentsNumberValue({
+        propertyKey: 'maxNumberOfAttachments',
+        handleComponentChange,
+        minNumberOfAttachments: 2,
+        maxNumberOfAttachments: undefined,
+      });
+
+      await user.type(screen.getByRole('textbox'), '1');
+
+      expect(screen.getByText(attachmentsErrorText)).toBeInTheDocument();
+      expect(handleComponentChange).not.toHaveBeenCalled();
+    });
+
+    it('saves a minimum equal to the maximum', async () => {
+      const user = userEvent.setup();
+      const handleComponentChange = jest.fn();
+      await renderAttachmentsNumberValue({
+        propertyKey: 'minNumberOfAttachments',
+        handleComponentChange,
+        minNumberOfAttachments: undefined,
+        maxNumberOfAttachments: 2,
+      });
+
+      await user.type(screen.getByRole('textbox'), '2');
+
+      expect(screen.queryByText(attachmentsErrorText)).not.toBeInTheDocument();
+      expect(handleComponentChange).toHaveBeenCalledWith(
+        expect.objectContaining({ minNumberOfAttachments: 2, maxNumberOfAttachments: 2 }),
+        expect.anything(),
+      );
+    });
+  });
 });
+
+type RenderAttachmentsNumberValueArgs = {
+  propertyKey: 'minNumberOfAttachments' | 'maxNumberOfAttachments';
+  handleComponentChange: jest.Mock;
+  minNumberOfAttachments?: number;
+  maxNumberOfAttachments?: number;
+};
+
+const renderAttachmentsNumberValue = async ({
+  propertyKey,
+  handleComponentChange,
+  minNumberOfAttachments,
+  maxNumberOfAttachments,
+}: RenderAttachmentsNumberValueArgs) => {
+  await waitForData();
+  return renderWithProviders(
+    <EditNumberValue
+      handleComponentChange={handleComponentChange}
+      propertyKey={propertyKey}
+      component={{
+        ...componentMocks[ComponentType.FileUpload],
+        minNumberOfAttachments,
+        maxNumberOfAttachments,
+      }}
+    />,
+  );
+};

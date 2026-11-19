@@ -2688,6 +2688,7 @@
   "validation_errors.maxLength": "Bruk {{number}} eller færre tegn.",
   "validation_errors.min": "Minste gyldig verdi er {{0}}.",
   "validation_errors.minLength": "Bruk {{0}} eller flere tegn.",
+  "validation_errors.min_number_of_attachments_above_max": "Minimum antall vedlegg kan ikke være høyere enn maks antall vedlegg.",
   "validation_errors.name_invalid": "Navnet er ugyldig. Det må ha mellom 2 og 28 tegn og kan inneholde tall, understrek, bindestrek, og store/små bokstaver fra det engelske alfabetet.",
   "validation_errors.numbers_only": "Du kan bare bruke sifre.",
   "validation_errors.pattern": "Feil format eller verdi.",

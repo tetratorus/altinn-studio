@@ -125,6 +125,23 @@ export const setComponentProperty = <
   };
 };
 
+export const minNumberOfAttachmentsAboveMaxErrorCode = 'min_number_of_attachments_above_max';
+
+/**
+ * Checks that the minimum number of attachments is not above the maximum.
+ * Values that are not plain numbers (unset or expressions) are not compared.
+ * @param component The component, or the part of it with the two attachment properties.
+ * @returns The error code if the minimum is above the maximum, otherwise null.
+ */
+export const validateNumberOfAttachments = (component: KeyValuePairs): string | null => {
+  const { minNumberOfAttachments, maxNumberOfAttachments } = component;
+  if (typeof minNumberOfAttachments !== 'number' || typeof maxNumberOfAttachments !== 'number')
+    return null;
+  return minNumberOfAttachments > maxNumberOfAttachments
+    ? minNumberOfAttachmentsAboveMaxErrorCode
+    : null;
+};
+
 export const EXPRESSION_SCHEMA_BASE_DEFINITION_REFERENCE =
   'expression.schema.v1.json#/definitions/' as const;
 

@@ -73,6 +73,29 @@ public class InstancesController_CopyInstanceTests
     }
 
     [Fact]
+    public async Task CopyInstance_AfterValidTo_ReturnsForbidden()
+    {
+        // Arrange
+        var auth = TestAuthentication.GetUserAuthentication(userPartyId: 343234);
+        using var fixture = InstancesControllerFixture.Create(auth);
+        ApplicationMetadata application = CreateApplicationMetadata("ttd", "copy-instance", true);
+        application.ValidTo = DateTime.UtcNow.AddDays(-1);
+        fixture.Mock<IAppMetadata>().Setup(a => a.GetApplicationMetadata()).ReturnsAsync(application);
+
+        // Act
+        var controller = fixture.ServiceProvider.GetRequiredService<InstancesController>();
+        ActionResult actual = await controller.CopyInstance("ttd", "copy-instance", 343234, Guid.NewGuid());
+
+        // Assert
+        ObjectResult forbidden = Assert.IsType<ObjectResult>(actual);
+        Assert.Equal(StatusCodes.Status403Forbidden, forbidden.StatusCode);
+        Assert.Contains("can no longer be used to create new instances", forbidden.Value?.ToString());
+
+        fixture.Mock<IAppMetadata>().VerifyAll();
+        fixture.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public async Task CopyInstance_AsAppOwner_ReturnsForbidResult()
     {
         // Arrange

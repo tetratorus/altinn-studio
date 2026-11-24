@@ -19,7 +19,7 @@
     "@studio/pure-functions": "workspace:^",
     "axios": "1.19.0",
     "classnames": "2.5.1",
-    "i18next": "25.10.10",
+    "i18next": "26.3.4",
     "posthog-js": "1.414.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",

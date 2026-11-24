@@ -11,7 +11,7 @@
     "chart.js": "4.5.1",
     "chartjs-adapter-date-fns": "3.0.0",
     "date-fns": "4.4.0",
-    "i18next": "25.10.10",
+    "i18next": "26.3.4",
     "identity-obj-proxy": "3.0.0",
     "react": "19.2.8",
     "react-chartjs-2": "5.3.1",

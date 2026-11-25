@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -15,6 +16,8 @@ namespace Designer.Tests.Infrastructure.GitRepository;
 
 public class AltinnAppGitRepositoryTests : IDisposable
 {
+    private const string OutsideFileContent = "content outside the repository";
+
     private string TargetRepoName { get; set; }
 
     [Fact]
@@ -437,6 +440,113 @@ public class AltinnAppGitRepositoryTests : IDisposable
         var files = altinnAppGitRepository.GetSchemaFiles();
 
         Assert.Empty(files);
+    }
+
+    [Fact]
+    public async Task GetRuleHandler_WhenFileIsSymbolicLinkOutsideRepository_ShouldNotReadTarget()
+    {
+        string org = "ttd";
+        string developer = "testUser";
+        string targetRepository = TestDataHelper.GenerateTestRepoName();
+        TargetRepoName = await TestDataHelper.CopyRepositoryForTest(
+            org,
+            "app-without-layoutsets",
+            developer,
+            targetRepository
+        );
+        string outsideFilePath = CreateFileOutsideRepository();
+        string linkPath = Path.Combine(TargetRepoName, "App", "ui", "RuleHandler.js");
+        File.CreateSymbolicLink(linkPath, outsideFilePath);
+        AltinnAppGitRepository altinnAppGitRepository = PrepareRepositoryForTest(org, targetRepository, developer);
+
+        try
+        {
+            await Assert.ThrowsAsync<FileNotFoundException>(async () =>
+                await altinnAppGitRepository.GetRuleHandler(null)
+            );
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                await altinnAppGitRepository.ReadTextByRelativePathAsync("App/ui/RuleHandler.js")
+            );
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                await altinnAppGitRepository.WriteTextByRelativePathAsync("App/ui/RuleHandler.js", "overwritten")
+            );
+            Assert.Equal(OutsideFileContent, await File.ReadAllTextAsync(outsideFilePath));
+        }
+        finally
+        {
+            File.Delete(linkPath);
+            File.Delete(outsideFilePath);
+        }
+    }
+
+    [Fact]
+    public async Task GetOptionsList_WhenFileIsSymbolicLinkOutsideRepository_ShouldNotReadTarget()
+    {
+        string org = "ttd";
+        string developer = "testUser";
+        string targetRepository = TestDataHelper.GenerateTestRepoName();
+        TargetRepoName = await TestDataHelper.CopyRepositoryForTest(
+            org,
+            "app-with-options",
+            developer,
+            targetRepository
+        );
+        string outsideFilePath = CreateFileOutsideRepository();
+        string linkPath = Path.Combine(TargetRepoName, "App", "options", "linked-options.json");
+        File.CreateSymbolicLink(linkPath, outsideFilePath);
+        AltinnAppGitRepository altinnAppGitRepository = PrepareRepositoryForTest(org, targetRepository, developer);
+
+        try
+        {
+            await Assert.ThrowsAsync<LibGit2Sharp.NotFoundException>(async () =>
+                await altinnAppGitRepository.GetOptionsList("linked-options")
+            );
+        }
+        finally
+        {
+            File.Delete(linkPath);
+            File.Delete(outsideFilePath);
+        }
+    }
+
+    [Fact]
+    public async Task GetLayout_WhenDirectoryIsSymbolicLinkOutsideRepository_ShouldNotReadTarget()
+    {
+        string org = "ttd";
+        string developer = "testUser";
+        string targetRepository = TestDataHelper.GenerateTestRepoName();
+        TargetRepoName = await TestDataHelper.CopyRepositoryForTest(
+            org,
+            "app-without-layoutsets",
+            developer,
+            targetRepository
+        );
+        string outsideDirectoryPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(outsideDirectoryPath);
+        await File.WriteAllTextAsync(Path.Combine(outsideDirectoryPath, "secret.json"), "{\"secret\":true}");
+        string linkPath = Path.Combine(TargetRepoName, "App", "ui", "linked");
+        Directory.CreateSymbolicLink(linkPath, outsideDirectoryPath);
+        AltinnAppGitRepository altinnAppGitRepository = PrepareRepositoryForTest(org, targetRepository, developer);
+
+        try
+        {
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                await altinnAppGitRepository.ReadTextByRelativePathAsync("App/ui/linked/secret.json")
+            );
+            Assert.False(altinnAppGitRepository.FileExistsByRelativePath("App/ui/linked/secret.json"));
+        }
+        finally
+        {
+            Directory.Delete(linkPath);
+            Directory.Delete(outsideDirectoryPath, true);
+        }
+    }
+
+    private static string CreateFileOutsideRepository()
+    {
+        string outsideFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.txt");
+        File.WriteAllText(outsideFilePath, OutsideFileContent);
+        return outsideFilePath;
     }
 
     private static AltinnAppGitRepository PrepareRepositoryForTest(string org, string repository, string developer)

@@ -136,6 +136,9 @@ public class GitRepository
     protected async Task<string> ReadTextByAbsolutePathAsync(string absoluteFilePath)
     {
         Guard.AssertFilePathWithinParentDirectory(RepositoryDirectory, absoluteFilePath);
+        absoluteFilePath = GetAbsoluteFileOrDirectoryPathSanitized(
+            Path.GetRelativePath(RepositoryDirectory, absoluteFilePath)
+        );
 
         // Commented out ref comment below in the ReadTextByRelativePathAsync method
         // return await ReadTextAsync(absoluteFilePath)
@@ -297,6 +300,9 @@ public class GitRepository
     {
         Guard.AssertNotNullOrEmpty(absoluteFilePath, nameof(absoluteFilePath));
         Guard.AssertFilePathWithinParentDirectory(RepositoryDirectory, absoluteFilePath);
+        absoluteFilePath = GetAbsoluteFileOrDirectoryPathSanitized(
+            Path.GetRelativePath(RepositoryDirectory, absoluteFilePath)
+        );
 
         File.Delete(absoluteFilePath);
     }
@@ -437,12 +443,22 @@ public class GitRepository
 
         foreach (FileInfo file in source.GetFiles())
         {
+            if (file.LinkTarget is not null)
+            {
+                continue;
+            }
+
             File.SetAttributes(file.FullName, FileAttributes.Normal);
             file.CopyTo(Path.Combine(target.FullName, file.Name), true);
         }
 
         foreach (DirectoryInfo subDirectory in source.GetDirectories())
         {
+            if (subDirectory.LinkTarget is not null)
+            {
+                continue;
+            }
+
             DirectoryInfo nextTargetSubDir = target.CreateSubdirectory(subDirectory.Name);
             CopyAll(subDirectory.FullName, nextTargetSubDir.FullName);
         }
@@ -476,7 +492,39 @@ public class GitRepository
             );
         }
 
+        AssertNoSymbolicLinkInPath(absoluteFilePath);
+
         return absoluteFilePath;
+    }
+
+    /// <summary>
+    /// Ensures that no existing component of the path, between the repository directory and the path itself,
+    /// is a symbolic link. Following links would let repository content point at files outside the repository.
+    /// </summary>
+    /// <param name="absolutePath">Absolute path located within the repository directory.</param>
+    private void AssertNoSymbolicLinkInPath(string absolutePath)
+    {
+        string relativePath = Path.GetRelativePath(RepositoryDirectory, absolutePath);
+        string[] pathComponents = relativePath.Split(
+            Path.DirectorySeparatorChar,
+            StringSplitOptions.RemoveEmptyEntries
+        );
+        string currentPath = RepositoryDirectory;
+        foreach (string pathComponent in pathComponents)
+        {
+            currentPath = Path.Combine(currentPath, pathComponent);
+            if (IsSymbolicLink(currentPath))
+            {
+                throw new ArgumentException(
+                    $"The path '{absolutePath}' must not contain symbolic links within the repository directory '{RepositoryDirectory}'."
+                );
+            }
+        }
+    }
+
+    private static bool IsSymbolicLink(string path)
+    {
+        return new FileInfo(path).LinkTarget is not null;
     }
 
     private static void CreateDirectory(string absoluteFilePath)

@@ -86,7 +86,12 @@ public class UpsertAppScopesTests
         string app = TestDataHelper.GenerateTestRepoName();
         GiteaClientMock
             .Setup(x => x.GetRepository(org, app))
-            .ReturnsAsync(new Repository { Permissions = new Permission { Push = false, Admin = false } });
+            .ReturnsAsync(
+                new Repository
+                {
+                    Permissions = new Permission { Push = false, Admin = false },
+                }
+            );
         AppScopesUpsertRequest payload = new()
         {
             Scopes = new HashSet<MaskinPortenScopeDto>()

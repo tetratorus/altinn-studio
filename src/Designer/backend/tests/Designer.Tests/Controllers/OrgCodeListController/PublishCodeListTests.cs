@@ -40,9 +40,7 @@ public class PublishCodeListTests(WebApplicationFactory<Program> factory)
         // Arrange
         _userOrganizationServiceMock.Setup(s => s.UserIsMemberOfOrganization(Org)).ReturnsAsync(true);
         _sharedContentClientMock
-            .Setup(c =>
-                c.PublishCodeList(Org, CodeListTitle, It.IsAny<CodeList>(), It.IsAny<CancellationToken>())
-            )
+            .Setup(c => c.PublishCodeList(Org, CodeListTitle, It.IsAny<CodeList>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(PublishedVersion);
 
         // Act
@@ -68,24 +66,14 @@ public class PublishCodeListTests(WebApplicationFactory<Program> factory)
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        _sharedContentClientMock.Verify(
-            c =>
-                c.PublishCodeList(
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<CodeList>(),
-                    It.IsAny<CancellationToken>()
-                ),
-            Times.Never
-        );
+        _sharedContentClientMock.VerifyNoOtherCalls();
     }
 
     private static PublishCodeListRequest CreateRequest()
     {
-        List<Code> codes =
-        [
-            new(Value: "1", Label: new Dictionary<string, string> { { "nb", "En" } }, null, null, null),
-        ];
+        Dictionary<string, string> label = new() { { "nb", "En" } };
+        Code code = new(Value: "1", Label: label, Description: null, HelpText: null, Tags: null);
+        List<Code> codes = [code];
         return new PublishCodeListRequest(CodeListTitle, new CodeList(codes, null, null));
     }
 

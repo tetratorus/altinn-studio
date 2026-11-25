@@ -27,7 +27,7 @@ internal static class MaskinportenAuthenticationExtensions
         {
             services
                 .AddAuthorizationBuilder()
-                .AddPolicy(MaskinportenConstants.AuthorizationPolicy, policy => policy.RequireAssertion(_ => true));
+                .AddPolicy(MaskinportenConstants.AuthorizationPolicy, policy => policy.RequireAssertion(_ => false));
             return services;
         }
 

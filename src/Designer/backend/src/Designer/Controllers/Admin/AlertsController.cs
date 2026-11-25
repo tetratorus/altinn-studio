@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Altinn.Studio.Designer.Constants;
 using Altinn.Studio.Designer.Infrastructure.Maskinporten;
 using Altinn.Studio.Designer.ModelBinding.Constants;
 using Altinn.Studio.Designer.Models;
@@ -8,6 +9,7 @@ using Altinn.Studio.Designer.Models.Alerts;
 using Altinn.Studio.Designer.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.FeatureManagement.Mvc;
 
 namespace Altinn.Studio.Designer.Controllers.Admin;
 
@@ -35,6 +37,7 @@ public class AlertsController(IAlertsService alertsService) : ControllerBase
     }
 
     [HttpPost]
+    [FeatureGate(StudioFeatureFlags.Maskinporten)]
     [Authorize(MaskinportenConstants.AuthorizationPolicy)]
     public async Task<ActionResult> NotifyAlertsUpdated(
         string org,

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Altinn.Studio.Designer.Constants;
 using Altinn.Studio.Designer.Hubs.EntityUpdate;
 using Altinn.Studio.Designer.Infrastructure.Maskinporten;
 using Altinn.Studio.Designer.Models;
@@ -12,6 +13,7 @@ using Altinn.Studio.Designer.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.FeatureManagement.Mvc;
 
 namespace Altinn.Studio.Designer.Controllers;
 
@@ -19,6 +21,7 @@ namespace Altinn.Studio.Designer.Controllers;
 /// Controller for receiving deployment webhook events from external systems
 /// </summary>
 [ApiController]
+[FeatureGate(StudioFeatureFlags.Maskinporten)]
 [Authorize(MaskinportenConstants.AuthorizationPolicy)]
 [Route(
     "/designer/api/v1/{org}/{app:regex(^(?!datamodels$)[[a-z]][[a-z0-9-]]{{1,28}}[[a-z0-9]]$)}/deployments/webhooks"

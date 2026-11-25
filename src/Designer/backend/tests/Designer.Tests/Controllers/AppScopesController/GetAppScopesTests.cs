@@ -46,6 +46,18 @@ public class GetAppScopesTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetAppScopes_Should_ReturnForbidden_WhenUserIsNotMemberOfOrg()
+    {
+        UserOrganizationServiceMock.Setup(x => x.UserIsMemberOfOrganization("ttd")).ReturnsAsync(false);
+
+        using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, VersionPrefix("ttd", "empty-app"));
+
+        using var response = await HttpClient.SendAsync(httpRequestMessage);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     [Theory]
     [InlineData("ttd", "empty-app")]
     public async Task GetAppScopes_Should_ReturnOk_WithScopes_IfRecordExists(string org, string app)

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Altinn.Studio.Designer.Constants;
 using Altinn.Studio.Designer.Helpers;
 using Altinn.Studio.Designer.Infrastructure.StudioOidc;
+using Altinn.Studio.Designer.ModelBinding.Constants;
 using Altinn.Studio.Designer.Models;
 using Altinn.Studio.Designer.Models.Dto;
 using Altinn.Studio.Designer.Repository.Models.AppScope;
@@ -43,7 +44,7 @@ public class AppScopesController(
         return Ok(response);
     }
 
-    [Authorize]
+    [Authorize(Policy = AltinnPolicy.MustHaveGiteaPushPermission)]
     [HttpPut]
     public async Task<IActionResult> UpsertAppScopes(
         string org,
@@ -71,7 +72,7 @@ public class AppScopesController(
         return Ok();
     }
 
-    [Authorize]
+    [Authorize(Policy = AltinnPolicy.MustHaveOrganizationPermission)]
     [HttpGet]
     public async Task<IActionResult> GetAppScopes(string org, string app, CancellationToken cancellationToken)
     {

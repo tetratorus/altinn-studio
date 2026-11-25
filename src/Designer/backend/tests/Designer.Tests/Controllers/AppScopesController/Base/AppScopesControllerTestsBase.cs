@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Altinn.Studio.Designer.Clients.Interfaces;
+using Altinn.Studio.Designer.RepositoryClient.Model;
 using Altinn.Studio.Designer.Services.Interfaces;
 using Altinn.Studio.Designer.Services.Models;
 using Designer.Tests.Controllers.ApiTests;
@@ -17,7 +19,17 @@ public class AppScopesControllerTestsBase<TControllerTest> : DbDesignerEndpoints
     where TControllerTest : class
 {
     public AppScopesControllerTestsBase(WebApplicationFactory<Program> factory, DesignerDbFixture designerDbFixture)
-        : base(factory, designerDbFixture) { }
+        : base(factory, designerDbFixture)
+    {
+        GiteaClientMock
+            .Setup(x => x.GetRepository(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(new Repository { Permissions = new Permission { Push = true } });
+        UserOrganizationServiceMock.Setup(x => x.UserIsMemberOfOrganization(It.IsAny<string>())).ReturnsAsync(true);
+    }
+
+    protected Mock<IGiteaClient> GiteaClientMock { get; } = new();
+
+    protected Mock<IUserOrganizationService> UserOrganizationServiceMock { get; } = new();
 
     protected override void ConfigureTestServices(IServiceCollection services)
     {
@@ -42,5 +54,7 @@ public class AppScopesControllerTestsBase<TControllerTest> : DbDesignerEndpoints
             .ReturnsAsync((string org, CancellationToken _) => org == "ttd");
 
         services.AddSingleton(environmentsServiceMock.Object);
+        services.AddSingleton(GiteaClientMock.Object);
+        services.AddSingleton(UserOrganizationServiceMock.Object);
     }
 }

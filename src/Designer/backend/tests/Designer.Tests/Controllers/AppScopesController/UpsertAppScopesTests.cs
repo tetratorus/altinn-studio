@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Altinn.Studio.Designer.Models.Dto;
 using Altinn.Studio.Designer.Repository.Models.AppScope;
+using Altinn.Studio.Designer.RepositoryClient.Model;
 using Designer.Tests.Controllers.AppScopesController.Base;
 using Designer.Tests.DbIntegrationTests;
 using Designer.Tests.Fixtures;
@@ -76,6 +77,35 @@ public class UpsertAppScopesTests
         using var response = await HttpClient.SendAsync(httpRequestMessage);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpsertAppScopes_Should_ReturnForbidden_WhenUserLacksPushPermission()
+    {
+        string org = "ttd";
+        string app = TestDataHelper.GenerateTestRepoName();
+        GiteaClientMock
+            .Setup(x => x.GetRepository(org, app))
+            .ReturnsAsync(new Repository { Permissions = new Permission { Push = false, Admin = false } });
+        AppScopesUpsertRequest payload = new()
+        {
+            Scopes = new HashSet<MaskinPortenScopeDto>()
+            {
+                new() { Scope = "test", Description = "test" },
+            },
+        };
+
+        using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, VersionPrefix(org, app));
+        httpRequestMessage.Content = new StringContent(
+            JsonSerializer.Serialize(payload),
+            Encoding.UTF8,
+            MediaTypeNames.Application.Json
+        );
+
+        using var response = await HttpClient.SendAsync(httpRequestMessage);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.False(await DesignerDbFixture.DbContext.AppScopes.AnyAsync(x => x.App == app && x.Org == org));
     }
 
     private async Task CallUpsertEndpointAndAssertFromDb(string org, string app, AppScopesUpsertRequest payload)

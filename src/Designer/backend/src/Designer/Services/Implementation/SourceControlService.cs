@@ -57,7 +57,7 @@ public class SourceControlService(
                 cloneOptions.FetchOptions.CredentialsProvider = self.GetCredentialsHandler(authenticatedContext);
                 cloneOptions.FetchOptions.CustomHeaders = self.GetAuthCustomHeaders(authenticatedContext);
                 string localPath = self.FindLocalRepoLocation(authenticatedContext);
-                string cloneResult = LibGit2Sharp.Repository.Clone(remoteRepo, localPath, cloneOptions);
+                string cloneResult = CloneWithoutSymbolicLinks(remoteRepo, localPath, cloneOptions);
 
                 self.FetchGitNotes(authenticatedContext);
                 return cloneResult;
@@ -97,11 +97,30 @@ public class SourceControlService(
                     cloneOptions.BranchName = ctx.branchName;
                 }
 
-                string cloneResult = LibGit2Sharp.Repository.Clone(remoteRepo, ctx.destinationPath, cloneOptions);
+                string cloneResult = CloneWithoutSymbolicLinks(remoteRepo, ctx.destinationPath, cloneOptions);
                 self.FetchGitNotesAtPath(ctx.destinationPath, ctx.authenticatedContext);
                 return cloneResult;
             }
         );
+    }
+
+    /// <summary>
+    /// Clones the repository with <c>core.symlinks</c> disabled before checkout, so symbolic links committed
+    /// to the repository are written as plain text files instead of links that could point outside it.
+    /// </summary>
+    private static string CloneWithoutSymbolicLinks(string remoteRepo, string localPath, CloneOptions cloneOptions)
+    {
+        cloneOptions.Checkout = false;
+        string cloneResult = LibGit2Sharp.Repository.Clone(remoteRepo, localPath, cloneOptions);
+
+        using var repo = new LibGit2Sharp.Repository(cloneResult);
+        repo.Config.Set("core.symlinks", false, ConfigurationLevel.Local);
+        if (repo.Head.Tip is not null)
+        {
+            repo.Reset(ResetMode.Hard, repo.Head.Tip);
+        }
+
+        return cloneResult;
     }
 
     /// <inheritdoc />

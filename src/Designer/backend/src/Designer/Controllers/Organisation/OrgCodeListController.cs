@@ -76,8 +76,9 @@ public class OrgCodeListController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(PublishedVersionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [Route("new/publish")]
-    [Authorize(Policy = AltinnPolicy.MustBelongToOrganization)]
+    [Authorize(Policy = AltinnPolicy.MustHaveOrganizationPermission)]
     public async Task<ActionResult<PublishedVersionResponse>> PublishCodeList(
         string org,
         [FromBody] PublishCodeListRequest requestBody,

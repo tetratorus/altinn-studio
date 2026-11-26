@@ -16,7 +16,8 @@ concurrency:
 jobs:
   test:
     if: ${{ github.event_name != 'pull_request' || (github.event.action != 'closed' && !github.event.pull_request.draft) }}
-    runs-on: ubuntu-latest
+    # hurl .deb depends on libxml2, which ubuntu-26.04 (ubuntu-latest) no longer ships.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     steps:

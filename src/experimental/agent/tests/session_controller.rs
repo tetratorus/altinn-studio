@@ -1328,8 +1328,9 @@ async fn a_prompt_without_wait_still_waits_for_the_harness_to_report_in() {
         })
     };
     tokio::time::sleep(Duration::from_millis(50)).await;
-    assert!(
-        runtime.sent.borrow().is_empty(),
+    assert_eq!(
+        *runtime.sent.borrow(),
+        [] as [String; 0],
         "nothing is pasted into a harness that has not reported in"
     );
     let token: agent::sessions::LaunchToken = "33333333-3333-4333-8333-333333333333".parse().expect("token");
@@ -2223,7 +2224,7 @@ async fn an_unsupported_completion_timeout_is_rejected_before_delivery() {
         .expect_err("unsupported completion timeout");
 
     assert!(error.to_string().contains("must not exceed 30m"));
-    assert!(harness.runtime.sent.borrow().is_empty());
+    assert_eq!(*harness.runtime.sent.borrow(), [] as [String; 0]);
     harness.finish();
 }
 

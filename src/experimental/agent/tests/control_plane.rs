@@ -366,7 +366,7 @@ async fn apply_stores_desired_state_without_running_inline() {
         Some(Platform::native("linux").architecture)
     );
     assert_eq!(fixture.backend.count(), 0);
-    assert!(applied.status.conditions.is_empty());
+    assert_eq!(applied.status.conditions, [] as [agent::Condition; 0]);
 }
 
 #[tokio::test(flavor = "local")]
@@ -481,7 +481,7 @@ async fn api_responses_carry_provenance_without_persisting_it() {
     reconcile(&fixture, "worker").await;
     let reconciled = fixture.control_plane.get("worker").await.expect("get after reconcile");
     assert_eq!(reconciled.status.provenance.as_ref(), Some(&expected));
-    assert!(!reconciled.status.conditions.is_empty());
+    assert_ne!(reconciled.status.conditions, [] as [agent::Condition; 0]);
     let record = stored(&fixture, "worker").await;
     assert_eq!(record.agent.status.provenance, None);
 }

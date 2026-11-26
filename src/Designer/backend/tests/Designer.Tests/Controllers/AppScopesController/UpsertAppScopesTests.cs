@@ -78,6 +78,41 @@ public class UpsertAppScopesTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task UpsertAppScopes_Should_ReturnForbidden_AndNotChangeScopes_WhenUserLacksPushPermission()
+    {
+        string org = ServiceOwnerOrgWithoutAccess;
+        string app = TestDataHelper.GenerateTestRepoName();
+        var initEntity = EntityGenerationUtils.AppScopes.GenerateAppScopesEntity(org, app, 4);
+        await DesignerDbFixture.PrepareAppScopesEntityInDatabaseAsync(initEntity);
+
+        AppScopesUpsertRequest payload = new()
+        {
+            Scopes = new HashSet<MaskinPortenScopeDto>()
+            {
+                new() { Scope = "attacker-scope", Description = "attacker-scope" },
+            },
+        };
+
+        using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, VersionPrefix(org, app));
+        httpRequestMessage.Content = new StringContent(
+            JsonSerializer.Serialize(payload),
+            Encoding.UTF8,
+            MediaTypeNames.Application.Json
+        );
+
+        using var response = await HttpClient.SendAsync(httpRequestMessage);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+        var dbEntity = await DesignerDbFixture
+            .DbContext.AppScopes.AsNoTracking()
+            .SingleAsync(x => x.App == app && x.Org == org);
+        var scopes = JsonSerializer.Deserialize<ISet<MaskinPortenScopeEntity>>(dbEntity.Scopes, JsonSerializerOptions);
+        Assert.Equal(initEntity.Scopes.Count, scopes.Count);
+        Assert.DoesNotContain(scopes, x => x.Scope == "attacker-scope");
+    }
+
     private async Task CallUpsertEndpointAndAssertFromDb(string org, string app, AppScopesUpsertRequest payload)
     {
         using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, VersionPrefix(org, app));

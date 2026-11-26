@@ -422,7 +422,7 @@ mod tests {
 
         assert!(error.to_string().contains("injected second migration failure"));
         assert_eq!(schema_version(&connection).expect("schema version"), 0);
-        assert!(user_tables(&connection).expect("tables").is_empty());
+        assert_eq!(user_tables(&connection).expect("tables"), BTreeSet::new());
     }
 
     #[test]
@@ -478,6 +478,6 @@ mod tests {
 
         assert!(error.to_string().contains("not a recognized released schema"));
         assert_eq!(schema_version(&connection).expect("schema version"), 0);
-        assert!(user_tables(&connection).expect("tables").is_empty());
+        assert_eq!(user_tables(&connection).expect("tables"), BTreeSet::new());
     }
 }

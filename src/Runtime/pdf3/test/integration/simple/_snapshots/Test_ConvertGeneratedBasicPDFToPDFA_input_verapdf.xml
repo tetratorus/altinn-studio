@@ -12,6 +12,15 @@
       </item>
       <validationReport jobEndStatus="normal" profileName="PDF/A-2B validation profile" statement="PDF file is not compliant with Validation Profile requirements." isCompliant="false">
         <details passedRules="141" failedRules="3" passedChecks="2133" failedChecks="206">
+          <rule specification="ISO 19005-2:2011" clause="6.6.2.1" testNumber="1" status="failed" failedChecks="1">
+            <description>The Catalog dictionary of a conforming file shall contain the Metadata key whose value is a metadata stream as defined in ISO 32000-1:2008, 14.3.2. The metadata stream dictionary shall contain entry Type with value /Metadata and entry Subtype with value /XML</description>
+            <object>PDDocument</object>
+            <test>containsMetadata == true</test>
+            <check status="failed">
+              <context>root/document[0]</context>
+              <errorMessage>The document catalog dictionary doesn't contain metadata key or metadata stream dictionary does not contain either entry Type with value /Metadata or entry Subtype with value /XML</errorMessage>
+            </check>
+          </rule>
           <rule specification="ISO 19005-2:2011" clause="6.2.4.3" testNumber="2" status="failed" failedChecks="204">
             <description>DeviceRGB shall only be used if a device independent DefaultRGB colour space has been set when the DeviceRGB colour space is used, or if the file has a PDF/A OutputIntent that contains an RGB destination profile</description>
             <object>PDDeviceRGB</object>
@@ -424,15 +433,6 @@
             <check status="failed">
               <context>root</context>
               <errorMessage>Missing or empty ID in the document trailer</errorMessage>
-            </check>
-          </rule>
-          <rule specification="ISO 19005-2:2011" clause="6.6.2.1" testNumber="1" status="failed" failedChecks="1">
-            <description>The Catalog dictionary of a conforming file shall contain the Metadata key whose value is a metadata stream as defined in ISO 32000-1:2008, 14.3.2. The metadata stream dictionary shall contain entry Type with value /Metadata and entry Subtype with value /XML</description>
-            <object>PDDocument</object>
-            <test>containsMetadata == true</test>
-            <check status="failed">
-              <context>root/document[0]</context>
-              <errorMessage>The document catalog dictionary doesn't contain metadata key or metadata stream dictionary does not contain either entry Type with value /Metadata or entry Subtype with value /XML</errorMessage>
             </check>
           </rule>
         </details>

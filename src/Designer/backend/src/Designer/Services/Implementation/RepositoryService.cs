@@ -530,7 +530,7 @@ public class RepositoryService : IRepository
         }
 
         string contentPath = ResolvePathWithinParentDirectory(repositoryPath, path);
-        if (contentPath is null)
+        if (contentPath is null || SymbolicLinkHelper.IsOutsideOrTraversesSymbolicLink(repositoryPath, contentPath))
         {
             return null;
         }
@@ -582,13 +582,20 @@ public class RepositoryService : IRepository
         }
         else if (Directory.Exists(contentPath))
         {
-            foreach (string directoryPath in Directory.GetDirectories(contentPath))
+            DirectoryInfo contentDirectory = new(contentPath);
+            foreach (DirectoryInfo directory in contentDirectory.GetDirectories())
             {
-                contents.Add(GetFileSystemObjectForDirectory(directoryPath));
+                if (!SymbolicLinkHelper.IsSymbolicLink(directory))
+                {
+                    contents.Add(GetFileSystemObjectForDirectory(directory.FullName));
+                }
             }
-            foreach (string filePath in Directory.GetFiles(contentPath))
+            foreach (FileInfo file in contentDirectory.GetFiles())
             {
-                contents.Add(GetFileSystemObjectForFile(filePath));
+                if (!SymbolicLinkHelper.IsSymbolicLink(file))
+                {
+                    contents.Add(GetFileSystemObjectForFile(file.FullName));
+                }
             }
         }
 

@@ -1,4 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -8,6 +11,7 @@ using Altinn.Studio.Designer.Models;
 using Altinn.Studio.Designer.Services.Interfaces;
 using Designer.Tests.Controllers.ApiTests;
 using Designer.Tests.Mocks;
+using Designer.Tests.TestAttributes;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -58,6 +62,51 @@ public class ContentsTests : DesignerEndpointsTestsBase<ContentsTests>, IClassFi
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+    }
+
+    [SkipOnOsPlatformsFact("WINDOWS")]
+    public async Task ContentsZip_Full_ExcludesSymbolicLinks()
+    {
+        // Arrange
+        string appRoot = Directory.CreateTempSubdirectory().FullName;
+        string outsideDirectory = Directory.CreateTempSubdirectory().FullName;
+        string outsideFile = Path.Combine(outsideDirectory, "secret.txt");
+        string fileLink = Path.Combine(appRoot, "env.txt");
+        string directoryLink = Path.Combine(appRoot, "linked-directory");
+        string uri = $"{VersionPrefix}/repo/ttd/apps-test/contents.zip?full=true";
+
+        try
+        {
+            File.WriteAllText(Path.Combine(appRoot, "regular.txt"), "regular");
+            File.WriteAllText(outsideFile, "secret");
+            File.CreateSymbolicLink(fileLink, outsideFile);
+            Directory.CreateSymbolicLink(directoryLink, outsideDirectory);
+
+            _repositoryMock
+                .Setup(r => r.GetAppPath(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(appRoot + Path.DirectorySeparatorChar);
+
+            using HttpRequestMessage httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            // Act
+            using HttpResponseMessage res = await HttpClient.SendAsync(httpRequestMessage);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+            await using Stream zipStream = await res.Content.ReadAsStreamAsync();
+            using ZipArchive archive = new ZipArchive(zipStream, ZipArchiveMode.Read);
+            Assert.Equal(["regular.txt"], archive.Entries.Select(entry => entry.FullName));
+        }
+        finally
+        {
+            File.Delete(fileLink);
+            if (Directory.Exists(directoryLink))
+            {
+                Directory.Delete(directoryLink);
+            }
+            Directory.Delete(appRoot, recursive: true);
+            Directory.Delete(outsideDirectory, recursive: true);
+        }
     }
 
     [Fact]

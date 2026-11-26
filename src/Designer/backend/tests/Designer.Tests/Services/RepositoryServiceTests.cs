@@ -19,6 +19,7 @@ using Altinn.Studio.Designer.Services.Implementation;
 using Altinn.Studio.Designer.Services.Interfaces;
 using Altinn.Studio.Designer.TypedHttpClients.AltinnStorage;
 using Designer.Tests.Mocks;
+using Designer.Tests.TestAttributes;
 using Designer.Tests.Utils;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -110,6 +111,57 @@ public class RepositoryServiceTests
 
         // Assert
         Assert.Null(actual);
+    }
+
+    [SkipOnOsPlatformsFact("WINDOWS")]
+    public void GetContents_SymbolicLinksInRepository_DoesNotReturnLinkTargets()
+    {
+        // Arrange
+        string org = "ttd";
+        string repositoryName = TestDataHelper.GenerateTestRepoName();
+        string developer = "testUser";
+        string repositoryDirectory = TestDataHelper.GetTestDataRepositoryDirectory(org, repositoryName, developer);
+        string outsideDirectory = Directory.CreateTempSubdirectory().FullName;
+        string outsideFile = Path.Combine(outsideDirectory, "secret.txt");
+        string fileLink = Path.Combine(repositoryDirectory, "env.txt");
+        string directoryLink = Path.Combine(repositoryDirectory, "linked-directory");
+
+        try
+        {
+            Directory.CreateDirectory(repositoryDirectory);
+            File.WriteAllText(Path.Combine(repositoryDirectory, "regular.txt"), "regular");
+            File.WriteAllText(outsideFile, "secret");
+            File.CreateSymbolicLink(fileLink, outsideFile);
+            Directory.CreateSymbolicLink(directoryLink, outsideDirectory);
+
+            RepositoryService sut = GetServiceForTest(developer);
+
+            // Act
+            List<FileSystemObject> rootContents = sut.GetContents(org, repositoryName);
+            List<FileSystemObject> fileLinkContents = sut.GetContents(org, repositoryName, "env.txt");
+            List<FileSystemObject> directoryLinkContents = sut.GetContents(org, repositoryName, "linked-directory");
+            List<FileSystemObject> fileThroughDirectoryLinkContents = sut.GetContents(
+                org,
+                repositoryName,
+                "linked-directory/secret.txt"
+            );
+
+            // Assert
+            Assert.Equal(["regular.txt"], rootContents.Select(c => c.Name));
+            Assert.Null(fileLinkContents);
+            Assert.Null(directoryLinkContents);
+            Assert.Null(fileThroughDirectoryLinkContents);
+        }
+        finally
+        {
+            File.Delete(fileLink);
+            if (Directory.Exists(directoryLink))
+            {
+                Directory.Delete(directoryLink);
+            }
+            Directory.Delete(repositoryDirectory, recursive: true);
+            Directory.Delete(outsideDirectory, recursive: true);
+        }
     }
 
     [Fact]

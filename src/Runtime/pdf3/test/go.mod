@@ -1,6 +1,6 @@
 module altinn.studio/pdf3/test
 
-go 1.26.4
+go 1.26.11
 
 replace altinn.studio/devenv => ../../devenv
 

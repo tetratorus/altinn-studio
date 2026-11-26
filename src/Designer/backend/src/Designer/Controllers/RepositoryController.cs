@@ -776,7 +776,10 @@ public class RepositoryController : ControllerBase
                     .Select(f => f.FilePath);
             }
 
-            foreach (var changedFile in changedFiles)
+            IEnumerable<string> filesToArchive = changedFiles.Where(file =>
+                !SymbolicLinkHelper.IsOutsideOrTraversesSymbolicLink(appRoot, Path.Join(appRoot, file))
+            );
+            foreach (var changedFile in filesToArchive)
             {
                 archive.CreateEntryFromFile(Path.Join(appRoot, changedFile), changedFile);
             }
@@ -792,7 +795,7 @@ public class RepositoryController : ControllerBase
         var ret = new List<string>();
         foreach (var directory in currentDir.EnumerateDirectories())
         {
-            if (directory.Name == ".git")
+            if (directory.Name == ".git" || SymbolicLinkHelper.IsSymbolicLink(directory))
             {
                 continue;
             }
@@ -800,7 +803,7 @@ public class RepositoryController : ControllerBase
             ret.AddRange(GetFilesInDirectory(appRoot, directory));
         }
 
-        foreach (var file in currentDir.GetFiles())
+        foreach (var file in currentDir.GetFiles().Where(file => !SymbolicLinkHelper.IsSymbolicLink(file)))
         {
             ret.Add(file.FullName.Replace('\\', '/').Replace(appRoot, string.Empty));
         }

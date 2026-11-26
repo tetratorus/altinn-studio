@@ -786,7 +786,11 @@ async fn prompt_wait_handles_mid_turn_input_after_a_late_start_report() {
             .await
     });
     tokio::time::sleep(Duration::from_millis(50)).await;
-    assert!(runtime.sent.borrow().is_empty(), "no delivery before the start report");
+    assert_eq!(
+        *runtime.sent.borrow(),
+        [] as [String; 0],
+        "no delivery before the start report"
+    );
 
     // The harness starts on its first prompt and is mid-turn when it reports.
     runtime.conversation.borrow_mut().push(user_turn("first prompt"));
@@ -981,14 +985,9 @@ async fn upgrade_preflight_reports_work_and_terminal_attachments() {
     );
 
     harness.report(agent::sessions::ActivityEvent::TurnCompleted).await;
-    assert!(
-        harness
-            .service
-            .upgrade_readiness()
-            .await
-            .expect("quiescent")
-            .blockers
-            .is_empty()
+    assert_eq!(
+        harness.service.upgrade_readiness().await.expect("quiescent").blockers,
+        [] as [String; 0]
     );
     harness.runtime.attached.set(true);
     assert_eq!(

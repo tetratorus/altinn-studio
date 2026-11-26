@@ -12,6 +12,10 @@ Agent images they work with. The Rust workspace version is a build detail and is
 
 ## [Unreleased]
 
+### Security
+
+- The Agent images now ship Go 1.26.11, which fixes CVE-2026-56857 (on Windows, creating a directory inside a restricted folder could follow a junction to a location outside it).
+
 ## [0.1.0-preview.2] - 2026-09-15
 
 ### Added

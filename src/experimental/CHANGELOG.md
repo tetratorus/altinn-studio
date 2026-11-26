@@ -12,6 +12,10 @@ Agent images they work with. The Rust workspace version is a build detail and is
 
 ## [Unreleased]
 
+### Security
+
+- The Agent images now ship .NET SDK 10.0.404 (runtime 10.0.15), which fixes the ASP.NET Core HTTP request smuggling vulnerability CVE-2026-70188.
+
 ## [0.1.0-preview.2] - 2026-09-15
 
 ### Added

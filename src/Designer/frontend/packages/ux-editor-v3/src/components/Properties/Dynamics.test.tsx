@@ -5,7 +5,11 @@ import { renderWithMockStore } from '../../testing/mocks';
 import { formItemContextProviderMock } from '../../testing/formItemContextMocks';
 import { Dynamics } from './Dynamics';
 import { textMock } from '@studio/testing/mocks/i18nMock';
-import type { WindowWithRuleModel } from '../../hooks/queries/useRuleModelQuery';
+import type { IRuleModelFieldElement } from '../../types/global';
+import { createQueryClientMock } from 'app-shared/mocks/queryClientMock';
+import { QueryKey } from 'app-shared/types/QueryKey';
+import { app, org } from '@studio/testing/testids';
+import { layoutSet1NameMock } from '../../testing/layoutSetsMock';
 import type { FormComponent } from '../../types/FormComponent';
 
 const user = userEvent.setup();
@@ -13,6 +17,11 @@ const user = userEvent.setup();
 // Test data:
 const conditionalRenderingTestId = 'conditional-rendering';
 const expressionsTestId = 'expressions';
+const conditionalRuleMock: IRuleModelFieldElement = {
+  name: 'biggerThan10',
+  inputs: { number: 'number' },
+  type: 'condition',
+};
 
 // Mocks:
 jest.mock('./ConditionalRendering', () => ({
@@ -40,8 +49,7 @@ describe('Dynamics', () => {
   });
 
   it('should render default unchecked switch if ruleHandler is found', async () => {
-    (window as WindowWithRuleModel).conditionalRuleHandlerObject = {};
-    await render();
+    await render({}, [conditionalRuleMock]);
     const oldDynamicsSwitch = screen.getByRole('switch', {
       name: textMock('right_menu.show_old_dynamics'),
     });
@@ -50,8 +58,7 @@ describe('Dynamics', () => {
   });
 
   it('should render old dynamics when enabling switch if ruleHandler is found', async () => {
-    (window as WindowWithRuleModel).conditionalRuleHandlerObject = {};
-    await render();
+    await render({}, [conditionalRuleMock]);
     const oldDynamicsSwitch = screen.getByRole('switch', {
       name: textMock('right_menu.show_old_dynamics'),
     });
@@ -73,8 +80,17 @@ describe('Dynamics', () => {
   });
 });
 
-const render = async (props: Partial<FormItemContext> = {}) => {
-  return renderWithMockStore({})(
+const render = async (
+  props: Partial<FormItemContext> = {},
+  ruleModel: IRuleModelFieldElement[] = [],
+) => {
+  const queryClient = createQueryClientMock();
+  queryClient.setQueryData([QueryKey.RuleHandler, org, app, layoutSet1NameMock], ruleModel);
+  return renderWithMockStore(
+    {},
+    {},
+    queryClient,
+  )(
     <FormItemContext.Provider
       value={{
         ...formItemContextProviderMock,

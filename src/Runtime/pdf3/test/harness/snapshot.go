@@ -49,6 +49,7 @@ func Snapshot(t *testing.T, data []byte, name string, ext string) {
 			return
 		} else if !bytes.Equal(existingData, data) {
 			t.Errorf("Snapshots not equal for: %s", fileName)
+			t.Logf("DEBUG-ACTUAL-BEGIN\n%s\nDEBUG-ACTUAL-END", data)
 			return
 		}
 	}

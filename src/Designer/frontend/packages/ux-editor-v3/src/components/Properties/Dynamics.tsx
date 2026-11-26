@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { ConditionalRendering } from './ConditionalRendering';
 import { Expressions } from '../config/Expressions';
 import { useText } from '../../hooks';
-import type { WindowWithRuleModel } from '../../hooks/queries/useRuleModelQuery';
+import { useRuleModelQuery } from '../../hooks/queries/useRuleModelQuery';
+import { useStudioEnvironmentParams } from 'app-shared/hooks/useStudioEnvironmentParams';
+import { useAppContext } from '../../hooks/useAppContext';
 import { useFormItemContext } from '../../containers/FormItemContext';
 import { formItemConfigs } from '../../data/formItemConfig';
 import { UnknownComponentAlert } from '../UnknownComponentAlert';
@@ -18,8 +20,11 @@ export const Dynamics = () => {
     setShowOldExpressions(event.target.checked);
   };
 
-  const conditionalRulesExist =
-    (window as WindowWithRuleModel).conditionalRuleHandlerObject !== undefined;
+  const { org, app } = useStudioEnvironmentParams();
+  const { selectedLayoutSet } = useAppContext();
+  const { data: ruleModel } = useRuleModelQuery(org, app, selectedLayoutSet);
+
+  const conditionalRulesExist = !!ruleModel?.some((element) => element.type === 'condition');
 
   const isUnknownInternalComponent: boolean = form && !formItemConfigs[form.type];
   if (isUnknownInternalComponent) {

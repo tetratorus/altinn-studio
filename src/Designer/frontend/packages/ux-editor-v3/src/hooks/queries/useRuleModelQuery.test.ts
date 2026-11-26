@@ -1,6 +1,5 @@
 import { renderHookWithMockStore } from '../../testing/mocks';
 import { waitFor } from '@testing-library/react';
-import type { WindowWithRuleModel } from './useRuleModelQuery';
 import { useRuleModelQuery } from './useRuleModelQuery';
 import ruleHandlerMock, {
   condition1Input1Label,
@@ -34,9 +33,6 @@ const selectedLayoutSet = layoutSet1NameMock;
 const getRuleModel = jest.fn().mockImplementation(() => Promise.resolve(ruleHandlerMock));
 
 describe('useRuleModelQuery', () => {
-  afterAll(() => {
-    delete global.window;
-  });
   it('Calls getRuleModel with correct parameters', async () => {
     await renderAndWaitForSuccess({ getRuleModel });
     expect(getRuleModel).toHaveBeenCalledTimes(1);
@@ -80,20 +76,24 @@ describe('useRuleModelQuery', () => {
     ]);
   });
 
-  it('sets all ruleModel related objects to "undefined" in window object if ruleHandler does not exist in repo', async () => {
-    const globalWindowWithRuleModel = global.window as WindowWithRuleModel;
+  it('Returns an empty array if ruleHandler does not exist in repo', async () => {
+    const { result } = await renderAndWaitForSuccess({
+      getRuleModel: () => Promise.resolve(null),
+    });
+    expect(result.current.data).toEqual([]);
+  });
 
-    await renderAndWaitForSuccess({ getRuleModel });
-    expect(globalWindowWithRuleModel.ruleHandlerObject).toBeDefined();
-    expect(globalWindowWithRuleModel.ruleHandlerHelper).toBeDefined();
-    expect(globalWindowWithRuleModel.conditionalRuleHandlerObject).toBeDefined();
-    expect(globalWindowWithRuleModel.conditionalRuleHandlerHelper).toBeDefined();
-
-    await renderAndWaitForSuccess({ getRuleModel: () => Promise.resolve(null) });
-    expect(globalWindowWithRuleModel.ruleHandlerObject).toBeUndefined();
-    expect(globalWindowWithRuleModel.ruleHandlerHelper).toBeUndefined();
-    expect(globalWindowWithRuleModel.conditionalRuleHandlerObject).toBeUndefined();
-    expect(globalWindowWithRuleModel.conditionalRuleHandlerHelper).toBeUndefined();
+  it('Does not execute the content of the ruleHandler file', async () => {
+    const maliciousRuleModel = `
+      window.ruleHandlerWasExecuted = true;
+      var ruleHandlerObject = { sum: function(obj) { return obj.a + obj.b; } };
+      var ruleHandlerHelper = { sum: function() { window.ruleHandlerWasExecuted = true; return { a: 'a' }; } };
+    `;
+    const { result } = await renderAndWaitForSuccess({
+      getRuleModel: () => Promise.resolve(maliciousRuleModel),
+    });
+    expect(result.current.data).toEqual([{ name: 'sum', inputs: { a: 'a' }, type: 'rule' }]);
+    expect(window).not.toHaveProperty('ruleHandlerWasExecuted');
   });
 });
 

@@ -1,9 +1,10 @@
 import { Properties } from './Properties';
-import { render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { FormItemContext } from '../../containers/FormItemContext';
 import userEvent from '@testing-library/user-event';
 import { formItemContextProviderMock } from '../../testing/formItemContextMocks';
 import { textMock } from '@studio/testing/mocks/i18nMock';
+import { renderWithMockStore } from '../../testing/mocks';
 
 const user = userEvent.setup();
 
@@ -118,4 +119,4 @@ const getComponent = (formItemContextProps: Partial<FormItemContext> = {}) => (
 );
 
 const render = (formItemContextProps: Partial<FormItemContext> = {}) =>
-  rtlRender(getComponent(formItemContextProps));
+  renderWithMockStore({})(getComponent(formItemContextProps)).renderResult;

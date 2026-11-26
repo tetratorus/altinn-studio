@@ -55,7 +55,6 @@ bildefil
 bildeopplaster
 brukerdataene
 brukerkontoer
-brukerpålogging
 brukersynkronisering
 claimet
 datamodellbinding
@@ -66,7 +65,6 @@ deaktiver
 delegerbar
 delegeringstekst
 driftsmeldinger
-egenregistrering
 endringslogg
 endringsoppsummering
 endringstransaksjon

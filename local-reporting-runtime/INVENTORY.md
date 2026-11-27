@@ -58,7 +58,7 @@ services that are _referenced_ but not in the list.
 | `mcr.microsoft.com/dotnet/sdk:10.0-alpine3.24` / `aspnet:10.0-alpine3.24`                                                      | Storage Dockerfile                                             |
 | `mcr.microsoft.com/dotnet/sdk:10.0.404-alpine3.24` / `aspnet:10.0.15-alpine3.24`                                               | Events, Profile Dockerfiles                                    |
 | `mcr.microsoft.com/dotnet/sdk:10.0-alpine` / `aspnet:10.0-alpine`                                                              | Authentication, Register, MockPorten Dockerfiles               |
-| `mcr.microsoft.com/dotnet/sdk:10.0-alpine@sha256:d8ee3981…` / `aspnet:10.0-alpine@sha256:27b6b84b…`                            | Authorization, Access Management Dockerfiles                   |
+| `mcr.microsoft.com/dotnet/sdk:10.0-alpine@sha256:d8ee3981…` / `aspnet:10.0-alpine@sha256:21c3f979…` (10.0.15)                  | Authorization, Access Management Dockerfiles                   |
 | `postgres:16` (Storage compose), Postgres via Aspire (Register), `postgres` (auth compose)                                     | databases                                                      |
 | `mcr.microsoft.com/azure-storage/azurite`                                                                                      | Storage, Events, Authentication, Auth, Profile                 |
 | `mcr.microsoft.com/azure-messaging/servicebus-emulator:latest` + `mcr.microsoft.com/mssql/server:2022-latest`                  | Events (Wolverine transport) — Storage also uses Wolverine/ASB |

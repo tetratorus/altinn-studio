@@ -981,14 +981,9 @@ async fn upgrade_preflight_reports_work_and_terminal_attachments() {
     );
 
     harness.report(agent::sessions::ActivityEvent::TurnCompleted).await;
-    assert!(
-        harness
-            .service
-            .upgrade_readiness()
-            .await
-            .expect("quiescent")
-            .blockers
-            .is_empty()
+    assert_eq!(
+        harness.service.upgrade_readiness().await.expect("quiescent").blockers,
+        [] as [String; 0]
     );
     harness.runtime.attached.set(true);
     assert_eq!(

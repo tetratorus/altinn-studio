@@ -46,25 +46,25 @@ hostnames (in `/etc/hosts`, resolving to 127.0.0.1) through the gateway.
 
 ## 2. Repository and version manifest
 
-| Component                                                                        | Source                                                                                             | Revision / version                                                              |
-| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Studio (app runtime libs, frontend, sample app, workflow engine, pdf3, this dir) | `tetratorus/altinn-studio`                                                                         | `a980e813d07d5136df8a032168535d938b40e73c` + this directory                     |
-| Storage                                                                          | `tetratorus/altinn-storage`                                                                        | `daa7654a72ef89a0be0c51587dacdfe2f4e1ccdd`                                      |
-| Events                                                                           | `tetratorus/altinn-events`                                                                         | `fcc0a70a06eb594968a52fedee8ef37052e61d16`                                      |
-| Authentication (+ `samples/mockporten`)                                          | `tetratorus/altinn-authentication`                                                                 | `938bc1382efe156940623f81077dd7fccfe9d4a4` (includes PR #4, MockPorten changes) |
-| Authorization, Access Management                                                 | `tetratorus/altinn-auth`                                                                           | `f33afeffab2bb6172cba375d8bd7b4808183e16c`                                      |
-| Register                                                                         | `tetratorus/altinn-register`                                                                       | `1bdb4789d7a8abd726abe6bf92ef7da9fd4cbb55`                                      |
-| Profile                                                                          | `tetratorus/altinn-profile`                                                                        | `156d8c10b280f02b6b71ca28492ee4587cef8d71`                                      |
-| Workflow engine                                                                  | `ghcr.io/altinn/altinn-studio/runtime-workflow-engine-app`                                         | `a45a743b78`                                                                    |
-| pdf3                                                                             | `ghcr.io/altinn/altinn-studio/runtime-pdf3-worker`                                                 | `694406e93c`                                                                    |
-| PostgreSQL                                                                       | `postgres`                                                                                         | `16-alpine`                                                                     |
-| Azurite                                                                          | `mcr.microsoft.com/azure-storage/azurite`                                                          | `3.35.0`                                                                        |
-| RabbitMQ                                                                         | `rabbitmq`                                                                                         | `4.1-management-alpine`                                                         |
-| Service Bus emulator                                                             | `mcr.microsoft.com/azure-messaging/servicebus-emulator` + `mssql/server:2022-latest`               | `latest` (only tag published)                                                   |
-| Lowkey Vault                                                                     | `nagyesta/lowkey-vault`                                                                            | `7.3.98`                                                                        |
-| OpenTelemetry collector                                                          | `otel/opentelemetry-collector-contrib`                                                             | `0.128.0`                                                                       |
-| Gateway                                                                          | `nginx`                                                                                            | `1.27-alpine`                                                                   |
-| Toolchain                                                                        | Docker 29.7.2, Compose v5.4.0, .NET SDK 10.0.403, Node 24.22.2 / Yarn 4.18.0 (corepack), Go 1.26.4 | Ubuntu 22.04 x86_64                                                             |
+| Component                                                                        | Source                                                                                             | Revision / version                                                                                   |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Studio (app runtime libs, frontend, sample app, workflow engine, pdf3, this dir) | `tetratorus/altinn-studio`                                                                         | `a980e813d07d5136df8a032168535d938b40e73c` + this directory                                          |
+| Storage                                                                          | `tetratorus/altinn-storage`                                                                        | `888221b3cd2764aa2f77b566a90c6b7f454aedca`                                                           |
+| Events                                                                           | `tetratorus/altinn-events`                                                                         | `6d2573ce23358484fe3a00abd0a64470977e9a90`                                                           |
+| Authentication (+ `samples/mockporten`)                                          | `tetratorus/altinn-authentication`                                                                 | `0b2eb01a950098d127dc9de62ac7e17351354fcf` (includes PR #4 MockPorten changes; .NET 10.0.15 upgrade) |
+| Authorization, Access Management                                                 | `tetratorus/altinn-auth`                                                                           | `21b308a7d0fce0f07005de41b50844f62bae9419`                                                           |
+| Register                                                                         | `tetratorus/altinn-register`                                                                       | `39f24de1de4aec4c550f6dc3b926cc4fa0807507`                                                           |
+| Profile                                                                          | `tetratorus/altinn-profile`                                                                        | `1ef6bb064e41429f0d7d6e21848a4b6408b2668a`                                                           |
+| Workflow engine                                                                  | `ghcr.io/altinn/altinn-studio/runtime-workflow-engine-app`                                         | `a45a743b78`                                                                                         |
+| pdf3                                                                             | `ghcr.io/altinn/altinn-studio/runtime-pdf3-worker`                                                 | `694406e93c`                                                                                         |
+| PostgreSQL                                                                       | `postgres`                                                                                         | `16-alpine`                                                                                          |
+| Azurite                                                                          | `mcr.microsoft.com/azure-storage/azurite`                                                          | `3.35.0`                                                                                             |
+| RabbitMQ                                                                         | `rabbitmq`                                                                                         | `4.1-management-alpine`                                                                              |
+| Service Bus emulator                                                             | `mcr.microsoft.com/azure-messaging/servicebus-emulator` + `mssql/server:2022-latest`               | `latest` (only tag published)                                                                        |
+| Lowkey Vault                                                                     | `nagyesta/lowkey-vault`                                                                            | `7.3.98`                                                                                             |
+| OpenTelemetry collector                                                          | `otel/opentelemetry-collector-contrib`                                                             | `0.128.0`                                                                                            |
+| Gateway                                                                          | `nginx`                                                                                            | `1.27-alpine`                                                                                        |
+| Toolchain                                                                        | Docker 29.7.2, Compose v5.4.0, .NET SDK 10.0.404, Node 24.22.2 / Yarn 4.18.0 (corepack), Go 1.26.4 | Ubuntu 22.04 x86_64                                                                                  |
 
 The seven `lrr/*:local` images are built by `scripts/build-images.sh` from the sibling checkouts
 (`~/repos/altinn-*`) at the revisions above. Those revisions are pinned in [`forks.lock`](forks.lock):
@@ -169,7 +169,7 @@ user's 403; it also checks that the first receipt PDF downloads as `application/
 (`LRR_CREATE_PDF=0` skips PDFs). It takes the frontend-test app's "skip to Task_3" shortcut, so Task_2
 (validation errors, file upload) is not exercised in the browser; `scripts/acceptance.sh` covers Task_2
 through the app API (invalid data rejected, attachment upload, process next). One screenshot per step lands in `evidence/browser-<ts>/` (latest:
-[`browser-20261102T020818Z`](evidence/browser-20261102T020818Z/README.md), 11/11 PASS). 5. Look behind the scenes: `docker compose logs -f events storage authorization`, the subscriber's
+[`browser-20261116T024608Z`](evidence/browser-20261116T024608Z/README.md), 11/11 PASS). 5. Look behind the scenes: `docker compose logs -f events storage authorization`, the subscriber's
 deliveries in `data/subscriber/received.jsonl`, traces in `logs/otel/traces.jsonl`, RabbitMQ UI at
 `http://localhost:15672` (guest/guest).
 
@@ -191,23 +191,27 @@ services; `scripts/restart-check.sh` and `scripts/observability.sh` cover items 
 | 8   | Upstream tests / smoke tests                                                                                                                                | PASS (see below) | `upstream-tests-*.md`, `browser-*/`         |
 | 9   | Stop and restart without data loss (`down.sh` → `up.sh`, 13 checks incl. attachment sha256, PDFs, process state, events, subscription)                      | PASS             | `restart-*.md`                              |
 
-Last run (2026-11-02, fresh VM: forks cloned at `forks.lock`, toolchain installed, every image rebuilt):
+Last run (2026-11-16, after the .NET 10.0.15 / SDK 10.0.404 upgrade; every platform service image rebuilt from `forks.lock`, while workflow engine, pdf3 and the other Studio runtime images are the published ones pinned in `docker-compose.yml`):
 acceptance `passed=26 failed=0`, restart `passed=13 failed=0`, browser walkthrough 11/11, observability
-761 OTel spans for the acceptance instance (`observability-20261102T020836Z.md`). The collector's file
+616 OTel spans for the acceptance instance (`observability-20261116T024606Z.md`). The collector's file
 exporter runs with `append: true`; without it a restart truncates `logs/otel/traces.jsonl`, and
 `observability.sh` fails on 0 spans.
 
 ### Upstream builds and tests run
 
-Per-suite counts: [`evidence/upstream-tests-20261102T020106Z.md`](evidence/upstream-tests-20261102T020106Z.md).
+Per-suite counts (2026-11-16, .NET 10.0.15 upgrade): storage in
+[`upstream-tests-20261116T024256Z.md`](evidence/upstream-tests-20261116T024256Z.md); the other suites in
+[`upstream-tests-20261116T024640Z.md`](evidence/upstream-tests-20261116T024640Z.md). Docker Hub pull rate limits (HTTP 429) on
+Testcontainers images show up as failing suites, not test failures; pulling the images from `mirror.gcr.io` and tagging
+them locally (`postgres:16.1-alpine`, `postgres:16.10-alpine`, `postgres:17`, `atmoz/sftp:alpine`) fixes it.
 
 | Repo / area                                             | Command                                                          | Result                                                                                         |
 | ------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Authentication — MockPorten                             | `dotnet build` + `dotnet test samples/mockporten/Mockporten.sln` | 43 passed, 0 failed, 0 skipped (`DOTNET_ROLL_FORWARD=Major`, runtime 10 only on this box)      |
+| Authentication — MockPorten                             | `dotnet build` + `dotnet test samples/mockporten/Mockporten.sln` | 43 passed, 0 failed, 0 skipped (`net10.0`)                                                     |
 | All 7 service images                                    | `docker build` from each fork's Dockerfile (release publish)     | built                                                                                          |
 | Sample app + frontend                                   | `dotnet publish` + `yarn build` (`src/App/frontend`)             | built                                                                                          |
 | Studio spellcheck                                       | `yarn spell:quick` on this directory                             | see PR CI                                                                                      |
-| Storage (in SDK container + throwaway Postgres/Azurite) | `scripts/upstream-tests.sh storage`                              | 1437 passed, 0 failed, 0 skipped                                                               |
+| Storage (in SDK container + throwaway Postgres/Azurite) | `scripts/upstream-tests.sh storage`                              | 1460 passed, 0 failed, 0 skipped                                                               |
 | Events                                                  | `scripts/upstream-tests.sh events`                               | 478 passed, 0 failed, 3 skipped                                                                |
 | Authentication                                          | `scripts/upstream-tests.sh authentication`                       | 626 passed, 0 failed, 2 skipped (needs the inotify limit above)                                |
 | Authorization (altinn-auth)                             | `scripts/upstream-tests.sh authorization`                        | unit 302 passed, integration 157 passed, 0 failed, 0 skipped                                   |

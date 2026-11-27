@@ -283,12 +283,12 @@ fn self_development_mounts_the_host_checkout_instead_of_cloning() {
     let checkout = manifest::decode(include_bytes!("../examples/self-dev/checkout/agent.yaml"))
         .expect("checkout manifest should decode");
     assert_eq!(checkout.metadata.name, "agent-dev");
-    assert!(checkout.spec.sandbox.mounts.is_empty());
+    assert_eq!(checkout.spec.sandbox.mounts, [] as [agent::MountSpec; 0]);
     assert_eq!(checkout.spec.environment, agent.spec.environment);
     let nested = manifest::decode(include_bytes!("../examples/self-dev/nested/agent.yaml"))
         .expect("nested manifest should decode");
     assert_eq!(nested.metadata.name, "agent-dev-nested");
-    assert!(nested.spec.sandbox.mounts.is_empty());
+    assert_eq!(nested.spec.sandbox.mounts, [] as [agent::MountSpec; 0]);
     assert_eq!(nested.spec.environment, agent.spec.environment);
     assert!(nested.spec.sandbox.resources.memory() < agent.spec.sandbox.resources.memory());
 }

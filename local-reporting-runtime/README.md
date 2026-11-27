@@ -191,7 +191,7 @@ services; `scripts/restart-check.sh` and `scripts/observability.sh` cover items 
 | 8   | Upstream tests / smoke tests                                                                                                                                | PASS (see below) | `upstream-tests-*.md`, `browser-*/`         |
 | 9   | Stop and restart without data loss (`down.sh` → `up.sh`, 13 checks incl. attachment sha256, PDFs, process state, events, subscription)                      | PASS             | `restart-*.md`                              |
 
-Last run (2026-11-16, after the .NET 10.0.15 / SDK 10.0.404 upgrade; every image rebuilt from `forks.lock`):
+Last run (2026-11-16, after the .NET 10.0.15 / SDK 10.0.404 upgrade; every platform service image rebuilt from `forks.lock`, while workflow engine, pdf3 and the other Studio runtime images are the published ones pinned in `docker-compose.yml`):
 acceptance `passed=26 failed=0`, restart `passed=13 failed=0`, browser walkthrough 11/11, observability
 616 OTel spans for the acceptance instance (`observability-20261116T024606Z.md`). The collector's file
 exporter runs with `append: true`; without it a restart truncates `logs/otel/traces.jsonl`, and
